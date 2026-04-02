@@ -12,6 +12,13 @@ export const config = {
   host: process.env["HOST"] ?? "0.0.0.0",
   nodeEnv: process.env["NODE_ENV"] ?? "development",
 
+  jwt: {
+    secret: process.env["JWT_SECRET"] ?? "dev-secret-change-in-production",
+    expiresIn: "24h",
+  },
+
+  defaultAdminPassword: process.env["DEFAULT_ADMIN_PASSWORD"] ?? "admin",
+
   storage: {
     host: process.env["STORAGE_HOST"] ?? "",
     port: parseInt(process.env["STORAGE_PORT"] ?? "23", 10),

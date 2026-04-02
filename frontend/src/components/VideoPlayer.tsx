@@ -63,7 +63,7 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
       </div>
 
       <video
-        src={`/api/stream?file=${encodeURIComponent(fileName)}`}
+        src={`/api/stream?file=${encodeURIComponent(fileName)}&token=${localStorage.getItem("token") ?? ""}`}
         controls
         autoPlay
         style={{

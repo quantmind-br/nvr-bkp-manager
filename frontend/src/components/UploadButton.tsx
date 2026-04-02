@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { apiFetch } from "../api";
 
 interface UploadButtonProps {
   onUploadComplete: () => void;
@@ -22,7 +23,7 @@ export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
         const form = new FormData();
         form.append("file", file);
 
-        const res = await fetch("/api/upload", { method: "POST", body: form });
+        const res = await apiFetch("/api/upload", { method: "POST", body: form });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(

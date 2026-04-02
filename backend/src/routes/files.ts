@@ -6,6 +6,7 @@ import {
   deleteFile,
   uploadFile,
 } from "../services/sftp.js";
+import { requireRole } from "../plugins/auth.js";
 
 function validateFileName(name: string | undefined): string | null {
   if (!name) return null;
@@ -109,9 +110,10 @@ export async function fileRoutes(app: FastifyInstance) {
     },
   );
 
-  // Delete file
+  // Delete file (admin only)
   app.delete<{ Querystring: { file?: string } }>(
     "/api/files",
+    { preHandler: [requireRole("admin")] },
     async (request, reply) => {
       const fileName = validateFileName(request.query.file);
       if (!fileName) {
@@ -132,8 +134,11 @@ export async function fileRoutes(app: FastifyInstance) {
     },
   );
 
-  // Upload file(s)
-  app.post("/api/upload", async (request, reply) => {
+  // Upload file(s) (admin only)
+  app.post(
+    "/api/upload",
+    { preHandler: [requireRole("admin")] },
+    async (request, reply) => {
     const parts = request.parts();
     const uploaded: string[] = [];
 
@@ -162,5 +167,6 @@ export async function fileRoutes(app: FastifyInstance) {
         .status(502)
         .send({ error: "Upload failed", details: message });
     }
-  });
+  },
+  );
 }

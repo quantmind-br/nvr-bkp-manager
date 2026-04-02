@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import VideoPlayer from "./VideoPlayer";
 import UploadButton from "./UploadButton";
+import { useAuth } from "../auth";
+import { apiFetch } from "../api";
 
 interface FileEntry {
   name: string;
@@ -51,6 +53,7 @@ function isPlayable(name: string): boolean {
 }
 
 export default function FileList() {
+  const { isAdmin } = useAuth();
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [currentPath, setCurrentPath] = useState("/");
   const [loading, setLoading] = useState(true);
@@ -62,7 +65,7 @@ export default function FileList() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
+      const res = await apiFetch(`/api/files?path=${encodeURIComponent(path)}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
@@ -84,8 +87,9 @@ export default function FileList() {
   }, [currentPath, fetchFiles]);
 
   function handleDownload(fileName: string) {
+    const token = localStorage.getItem("token") ?? "";
     const a = document.createElement("a");
-    a.href = `/api/download?file=${encodeURIComponent(fileName)}`;
+    a.href = `/api/download?file=${encodeURIComponent(fileName)}&token=${token}`;
     a.download = fileName;
     document.body.appendChild(a);
     a.click();
@@ -97,7 +101,7 @@ export default function FileList() {
 
     setDeletingFile(fileName);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/files?file=${encodeURIComponent(fileName)}`,
         { method: "DELETE" },
       );
@@ -150,7 +154,7 @@ export default function FileList() {
           <span style={{ color: "#666", fontSize: "0.8rem" }}>
             {!loading && `${files.filter((f) => f.name !== "..").length} items`}
           </span>
-          <UploadButton onUploadComplete={() => fetchFiles(currentPath)} />
+          {isAdmin && <UploadButton onUploadComplete={() => fetchFiles(currentPath)} />}
         </span>
       </div>
 
@@ -267,7 +271,7 @@ export default function FileList() {
                       Download
                     </button>
                   )}
-                  {!file.isDirectory && file.name !== ".." && (
+                  {isAdmin && !file.isDirectory && file.name !== ".." && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
