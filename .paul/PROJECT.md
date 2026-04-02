@@ -34,9 +34,10 @@ Centralizar, simplificar e democratizar o acesso ao gerenciamento de backups de 
 - Authentication: JWT auth, role-based access, SQLite users, login page (Phase 5)
 - Audit logging and production deploy via Dokploy (Phase 6)
 - Enhanced filtering: multi-channel chips, time-of-day range, file size range, grouped layout (Phase 7)
+- Selection and bulk operations: multi-select, bulk delete, bulk download zip (Phase 8)
 
 ### Active (In Progress)
-- Selection and bulk operations: multi-select, bulk delete, bulk download (Phase 8)
+None.
 
 ### Planned (Next)
 - To be defined after v0.2 milestone

@@ -9,20 +9,20 @@ Do conceito ao deploy: construir uma plataforma web que conecta a Storage Boxes 
 | Version | Name | Phases | Status | Completed |
 |---------|------|--------|--------|-----------|
 | v0.1 | Initial Release | 1-6 | ✅ Shipped | 2026-04-02 |
-| v0.2 | Filtering & Bulk Operations | 7-8 | 🚧 In Progress | - |
+| v0.2 | Filtering & Bulk Operations | 7-8 | ✅ Shipped | 2026-04-02 |
 
 ## 🚧 Active Milestone: v0.2 Filtering & Bulk Operations
 
 **Goal:** Enable users to efficiently find and act on multiple files at once — select, delete, and download in bulk.
-**Status:** Phase 1 of 2
-**Progress:** [█████░░░░░] 50%
+**Status:** Phase 2 of 2 — COMPLETE
+**Progress:** [██████████] 100%
 
 ### Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
 | 7 | Enhanced Filtering | 07-01 | Complete | 2026-04-02 |
-| 8 | Selection & Bulk Operations | 08-01 | Planning | - |
+| 8 | Selection & Bulk Operations | 08-01 | Complete | 2026-04-02 |
 
 ### Phase 7: Enhanced Filtering
 
