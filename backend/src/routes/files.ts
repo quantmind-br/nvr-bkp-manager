@@ -22,6 +22,7 @@ interface FileListQuery {
   endDate?: string;
   minSize?: string;
   maxSize?: string;
+  fileType?: string;
 }
 
 interface FileFilters {
@@ -30,6 +31,7 @@ interface FileFilters {
   endDateExclusiveTimestamp?: number;
   minSize?: number;
   maxSize?: number;
+  fileTypes?: string[];
 }
 
 interface FileActionQuery {
@@ -137,12 +139,25 @@ function toTimestamp(isoDateTime: string): number | null {
   return Number.isNaN(timestamp) ? null : timestamp;
 }
 
+function getFileExtension(name: string): string {
+  const dot = name.lastIndexOf(".");
+  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
+}
+
 function shouldIncludeFile(file: FileEntry, filters: FileFilters): boolean {
   if (file.isDirectory) {
     return true;
   }
 
   const parsed = file.parsed ?? buildParsedMetadata(file.name);
+
+  // File type filter (match ANY)
+  if (filters.fileTypes && filters.fileTypes.length > 0) {
+    const ext = getFileExtension(file.name);
+    if (!ext || !filters.fileTypes.includes(ext)) {
+      return false;
+    }
+  }
 
   // Channel filter (multi-channel: match ANY)
   if (filters.channels && filters.channels.length > 0) {
@@ -208,6 +223,11 @@ export async function fileRoutes(app: FastifyInstance) {
         ? channelRaw.split(",").map((c) => c.trim()).filter(Boolean)
         : undefined;
 
+      const fileTypeRaw = request.query.fileType?.trim().toLowerCase();
+      const fileTypes = fileTypeRaw
+        ? fileTypeRaw.split(",").map((t) => t.trim()).filter(Boolean)
+        : undefined;
+
       const minSizeRaw = request.query.minSize;
       const maxSizeRaw = request.query.maxSize;
       const minSize = minSizeRaw ? Number.parseInt(minSizeRaw, 10) : undefined;
@@ -263,6 +283,7 @@ export async function fileRoutes(app: FastifyInstance) {
             endDateExclusiveTimestamp,
             minSize,
             maxSize,
+            fileTypes,
           }),
         );
       } catch (err) {

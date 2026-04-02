@@ -70,6 +70,7 @@ export default function FileList() {
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
   const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set());
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [dateFilter, setDateFilter] = useState("");
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
@@ -90,6 +91,7 @@ export default function FileList() {
 
   useEffect(() => {
     setSelectedChannels(new Set());
+    setSelectedTypes(new Set());
     setDateFilter("");
     setStartDateFilter("");
     setEndDateFilter("");
@@ -108,6 +110,7 @@ export default function FileList() {
     channels: Set<string>,
     minSize: string,
     maxSize: string,
+    types: Set<string>,
   ) => {
     setLoading(true);
     setError(null);
@@ -123,6 +126,9 @@ export default function FileList() {
       }
       if (channels.size > 0) {
         params.append("channel", Array.from(channels).join(","));
+      }
+      if (types.size > 0) {
+        params.append("fileType", Array.from(types).join(","));
       }
       const minBytes = minSize ? Math.round(parseFloat(minSize) * 1024 * 1024) : 0;
       const maxBytes = maxSize ? Math.round(parseFloat(maxSize) * 1024 * 1024) : 0;
@@ -148,8 +154,8 @@ export default function FileList() {
   }, []);
 
   useEffect(() => {
-    fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB);
-  }, [currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB, fetchFiles]);
+    fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB, selectedTypes);
+  }, [currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB, selectedTypes, fetchFiles]);
 
   async function handleDownload(fileName: string) {
     setDownloadingFile(fileName);
@@ -191,7 +197,7 @@ export default function FileList() {
           (body as { error?: string }).error ?? `HTTP ${res.status}`,
         );
       }
-      fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB);
+      fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB, selectedTypes);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
@@ -212,28 +218,43 @@ export default function FileList() {
   }
 
   const [knownChannels, setKnownChannels] = useState<Set<string>>(new Set());
+  const [knownTypes, setKnownTypes] = useState<Set<string>>(new Set());
 
-  // Accumulate channels from all responses (don't shrink when filtering)
   useEffect(() => {
     const newChannels = new Set(knownChannels);
+    const newTypes = new Set(knownTypes);
     let changed = false;
     for (const f of files) {
       if (f.parsed?.channel && !newChannels.has(f.parsed.channel)) {
         newChannels.add(f.parsed.channel);
         changed = true;
       }
+      if (!f.isDirectory) {
+        const ext = getExtension(f.name);
+        if (ext && !newTypes.has(ext)) {
+          newTypes.add(ext);
+          changed = true;
+        }
+      }
     }
-    if (changed) setKnownChannels(newChannels);
+    if (changed) {
+      setKnownChannels(newChannels);
+      setKnownTypes(newTypes);
+    }
   }, [files]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset known channels when path changes
   useEffect(() => {
     setKnownChannels(new Set());
+    setKnownTypes(new Set());
   }, [currentPath]);
 
   const availableChannels = useMemo(() => {
     return Array.from(knownChannels).sort();
   }, [knownChannels]);
+
+  const availableTypes = useMemo(() => {
+    return Array.from(knownTypes).sort();
+  }, [knownTypes]);
 
   const timeFilteredFiles = useMemo(() => {
     if (!timeFrom && !timeTo) return files;
@@ -287,7 +308,7 @@ export default function FileList() {
     }
   };
 
-  const hasActiveFilters = selectedChannels.size > 0 || dateFilter || startDateFilter || endDateFilter || timeFrom || timeTo || minSizeMB || maxSizeMB;
+  const hasActiveFilters = selectedChannels.size > 0 || selectedTypes.size > 0 || dateFilter || startDateFilter || endDateFilter || timeFrom || timeTo || minSizeMB || maxSizeMB;
 
   // Selection helpers
   const selectableFiles = useMemo(
@@ -346,7 +367,7 @@ export default function FileList() {
         setBulkDeleteResult(`${failed.length} file(s) failed to delete: ${failed.map((r) => r.file).join(", ")}`);
       }
       setConfirmBulkDelete(false);
-      fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB);
+      fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB, selectedTypes);
     } catch (err) {
       setBulkDeleteResult(err instanceof Error ? err.message : "Bulk delete failed");
     } finally {
@@ -454,7 +475,7 @@ export default function FileList() {
           <span style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>
             {!loading && `${sortedFiles.filter((f) => f.name !== "..").length} items`}
           </span>
-          {isAdmin && <UploadButton currentPath={currentPath} onUploadComplete={() => fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB)} />}
+          {isAdmin && <UploadButton currentPath={currentPath} onUploadComplete={() => fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB, selectedTypes)} />}
 
         </span>
       </div>
@@ -587,12 +608,48 @@ export default function FileList() {
           </div>
         </div>
 
-        {/* Clear / status */}
+        {/* File type filter group */}
+        <div style={filterGroupStyle}>
+          <span style={filterLabelStyle}>File Type</span>
+          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+            {availableTypes.length === 0 ? (
+               <span style={{ color: "var(--color-text-faint)", fontSize: "0.8rem" }}>-</span>
+            ) : (
+              availableTypes.map((ext) => {
+                const active = selectedTypes.has(ext);
+                return (
+                  <button
+                    key={ext}
+                    onClick={() => {
+                      const next = new Set(selectedTypes);
+                      if (active) next.delete(ext); else next.add(ext);
+                      setSelectedTypes(next);
+                    }}
+                    style={{
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      border: active ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
+                      background: active ? "var(--color-primary)" : "#fff",
+                      color: active ? "#fff" : "#333",
+                      cursor: "pointer",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    .{ext.toUpperCase()}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
         {hasActiveFilters && (
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", alignSelf: "flex-end", paddingBottom: "0.5rem" }}>
             <button
               onClick={() => {
                 setSelectedChannels(new Set());
+                setSelectedTypes(new Set());
                 setDateFilter("");
                 setStartDateFilter("");
                 setEndDateFilter("");
