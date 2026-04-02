@@ -143,6 +143,50 @@ export async function streamRoutes(app: FastifyInstance) {
     },
   );
 
+  // Debug: test SFTP + FFmpeg pipeline
+  app.get("/api/stream/debug", async () => {
+    const { spawn } = await import("child_process");
+    const { getReadStream } = await import("../services/sftp.js");
+    const results: string[] = [];
+
+    // Test 1: SFTP connection
+    try {
+      const handle = await getReadStream("ch0_2026-02-03_07-11-54_2026-02-03_07-13-41.dav");
+      results.push("SFTP: connected");
+      handle.sftp.end().catch(() => {});
+    } catch (e) {
+      results.push(`SFTP: FAILED - ${e instanceof Error ? e.message : e}`);
+    }
+
+    // Test 2: FFmpeg available
+    try {
+      const ver = await new Promise<string>((resolve) => {
+        const p = spawn("ffmpeg", ["-version"]);
+        let out = "";
+        p.stdout.on("data", (d: Buffer) => { out += d.toString(); });
+        p.on("close", () => resolve(out.split("\n")[0] ?? "unknown"));
+      });
+      results.push(`FFmpeg: ${ver}`);
+    } catch (e) {
+      results.push(`FFmpeg: FAILED - ${e instanceof Error ? e.message : e}`);
+    }
+
+    // Test 3: /tmp writable
+    try {
+      const { writeFileSync, unlinkSync } = await import("fs");
+      const { join } = await import("path");
+      const { tmpdir } = await import("os");
+      const testFile = join(tmpdir(), "nvr-test-write");
+      writeFileSync(testFile, "test");
+      unlinkSync(testFile);
+      results.push(`Tmpdir: ${tmpdir()} writable`);
+    } catch (e) {
+      results.push(`Tmpdir: FAILED - ${e instanceof Error ? e.message : e}`);
+    }
+
+    return { results };
+  });
+
   // Stop a session and clean up
   app.delete<{ Params: { sessionId: string } }>(
     "/api/stream/:sessionId",
