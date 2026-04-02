@@ -31,36 +31,42 @@ export async function streamRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: "Invalid file name" });
       }
 
-      try {
-        const session = await createHlsSession(fileName, startSeconds);
-        registerSession(session);
+      // Parse duration from filename (no I/O needed)
+      const durationMatch = fileName.match(
+        /(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/,
+      );
+      let durationSeconds: number | null = null;
+      if (durationMatch) {
+        const s = new Date(`${durationMatch[1]}-${durationMatch[2]}-${durationMatch[3]}T${durationMatch[4]}:${durationMatch[5]}:${durationMatch[6]}`);
+        const e = new Date(`${durationMatch[7]}-${durationMatch[8]}-${durationMatch[9]}T${durationMatch[10]}:${durationMatch[11]}:${durationMatch[12]}`);
+        const diff = (e.getTime() - s.getTime()) / 1000;
+        if (diff > 0) durationSeconds = diff;
+      }
 
-        logAction(
-          request.user.sub,
-          request.user.username,
-          "stream",
-          fileName,
-          `session:${session.sessionId} start:${startSeconds}s`,
-          request.ip,
-        );
+      // Generate session ID immediately and return — no I/O blocking
+      const { randomBytes } = await import("crypto");
+      const sessionId = randomBytes(8).toString("hex");
 
-        // Don't await ready — return immediately, let frontend poll
-        // The ready promise continues in the background
-        session.ready.catch(() => {
-          removeSession(session.sessionId);
+      logAction(
+        request.user.sub,
+        request.user.username,
+        "stream",
+        fileName,
+        `session:${sessionId} start:${startSeconds}s`,
+        request.ip,
+      );
+
+      // Start transcoding in background (async, no await)
+      createHlsSession(fileName, startSeconds, sessionId)
+        .then((session) => {
+          registerSession(session);
+          session.ready.catch(() => removeSession(sessionId));
+        })
+        .catch((err) => {
+          console.error("[Stream init error]", err instanceof Error ? err.message : err);
         });
 
-        return {
-          sessionId: session.sessionId,
-          startSeconds: session.startSeconds,
-          durationSeconds: session.durationSeconds,
-        };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        return reply
-          .status(502)
-          .send({ error: "Stream failed", details: message });
-      }
+      return { sessionId, startSeconds, durationSeconds };
     },
   );
 

@@ -35,13 +35,14 @@ function parseDurationFromFilename(fileName: string): number | null {
 export async function createHlsSession(
   fileName: string,
   startSeconds = 0,
+  sessionId?: string,
 ): Promise<HlsSession> {
   const ext = fileName.slice(fileName.lastIndexOf(".")).toLowerCase();
   if (ext !== ".dav" && ext !== ".mp4") {
     throw new Error(`Unsupported file format: ${ext}`);
   }
 
-  const sessionId = randomBytes(8).toString("hex");
+  if (!sessionId) sessionId = randomBytes(8).toString("hex");
   const hlsDir = join(tmpdir(), `nvr-hls-${sessionId}`);
   mkdirSync(hlsDir, { recursive: true });
 
