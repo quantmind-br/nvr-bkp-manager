@@ -647,19 +647,21 @@ export default function FileList() {
       )}
 
       {bulkDeleteResult && (
-        <p style={{ color: "#c00", padding: "0.5rem 0.75rem", background: "#fff0f0", borderRadius: "4px", border: "1px solid #fcc", marginBottom: "0.75rem", fontSize: "0.85rem" }}>
+        <p role="alert" aria-live="assertive" style={{ color: "#c00", padding: "0.5rem 0.75rem", background: "#fff0f0", borderRadius: "4px", border: "1px solid #fcc", marginBottom: "0.75rem", fontSize: "0.85rem" }}>
           {bulkDeleteResult}
         </p>
       )}
 
       {loading && (
-        <p style={{ color: "#666", padding: "2rem", textAlign: "center" }}>
+        <p aria-live="polite" style={{ color: "#666", padding: "2rem", textAlign: "center" }}>
           Loading files...
         </p>
       )}
 
       {error && (
         <p
+          role="alert"
+          aria-live="assertive"
           style={{
             color: "#c00",
             padding: "1rem",
@@ -680,152 +682,164 @@ export default function FileList() {
       )}
 
       {!loading && !error && (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: "0.9rem",
-          }}
-        >
-          <thead>
-            <tr
+        <>
+          <div style={{ overflowX: "auto" }}>
+            <table
               style={{
-                borderBottom: "2px solid #ddd",
-                textAlign: "left",
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: "0.9rem",
+                minWidth: "960px",
               }}
             >
-              <th style={{ padding: "0.5rem", width: "40px" }}>
-                <input
-                  ref={headerCheckboxRef}
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleSelectAll}
-                  style={{ cursor: "pointer" }}
-                />
-              </th>
-              <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => handleSort("channel")}>
-                Channel {sortColumn === "channel" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-              </th>
-              <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => handleSort("start")}>
-                Start {sortColumn === "start" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-              </th>
-              <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => handleSort("end")}>
-                End {sortColumn === "end" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-              </th>
-              <th style={{ padding: "0.5rem" }}>Duration</th>
-              <th style={{ padding: "0.5rem", width: "100px" }}>Size</th>
-              <th style={{ padding: "0.5rem", width: "180px" }}>Modified</th>
-              <th style={{ padding: "0.5rem", width: "60px" }}>Type</th>
-              <th style={{ padding: "0.5rem", width: "180px" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedFiles.map((file) => (
-              <tr
-                key={file.name}
-                style={{
-                  borderBottom: "1px solid #eee",
-                  cursor: file.isDirectory ? "pointer" : "default",
-                }}
-                onClick={() => file.isDirectory && navigateTo(file.name)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" &&
-                  file.isDirectory &&
-                  navigateTo(file.name)
-                }
-                title={file.name}
-              >
-                <td style={{ padding: "0.5rem" }}>
-                  {!file.isDirectory && file.name !== ".." && (
-                    <input
-                      type="checkbox"
-                      checked={selectedForBulk.has(file.name)}
-                      onChange={(e) => { e.stopPropagation(); toggleFileSelect(file.name); }}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ cursor: "pointer" }}
-                    />
-                  )}
-                </td>
-                {file.parsed?.channel != null ? (
-                  <>
-                    <td style={{ padding: "0.5rem" }}>
-                      <span style={{ background: "#0066cc", color: "white", padding: "2px 6px", borderRadius: "10px", fontSize: "0.8rem", fontWeight: "bold" }}>
-                        {file.parsed.channel?.toUpperCase() || "-"}
-                      </span>
-                    </td>
-                    <td style={{ padding: "0.5rem" }}>{formatDate(file.parsed.startTime || "")}</td>
-                    <td style={{ padding: "0.5rem" }}>{formatDate(file.parsed.endTime || "")}</td>
-                    <td style={{ padding: "0.5rem" }}>{file.parsed.duration || "-"}</td>
-                  </>
-                ) : (
-                  <td
-                    colSpan={4}
-                    style={{
-                      padding: "0.5rem",
-                      color: file.isDirectory ? "#0066cc" : "inherit",
-                      fontWeight: file.isDirectory ? 600 : 400,
-                    }}
-                  >
-                    {file.isDirectory ? "[DIR] " : ""}
-                    {file.name}
-                  </td>
-                )}
-                <td style={{ padding: "0.5rem", color: "#666" }}>
-                  {file.isDirectory ? "-" : formatSize(file.size)}
-                </td>
-                <td style={{ padding: "0.5rem", color: "#666" }}>
-                  {formatDate(file.modifiedAt)}
-                </td>
-                <td
+              <thead>
+                <tr
                   style={{
-                    padding: "0.5rem",
-                    color: "#999",
-                    textTransform: "uppercase",
-                    fontSize: "0.8rem",
+                    borderBottom: "2px solid #ddd",
+                    textAlign: "left",
                   }}
                 >
-                  {file.isDirectory ? "dir" : getExtension(file.name) || "-"}
-                </td>
-                <td style={{ padding: "0.5rem", display: "flex", gap: "4px" }}>
-                  {!file.isDirectory && isPlayable(file.name) && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedFile(file.name);
+                  <th style={{ padding: "0.5rem", width: "40px" }}>
+                    <input
+                      ref={headerCheckboxRef}
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      style={{ cursor: "pointer" }}
+                    />
+                  </th>
+                  <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => handleSort("channel")}>
+                    Channel {sortColumn === "channel" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => handleSort("start")}>
+                    Start {sortColumn === "start" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => handleSort("end")}>
+                    End {sortColumn === "end" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th style={{ padding: "0.5rem" }}>Duration</th>
+                  <th style={{ padding: "0.5rem", width: "100px" }}>Size</th>
+                  <th style={{ padding: "0.5rem", width: "180px" }}>Modified</th>
+                  <th style={{ padding: "0.5rem", width: "60px" }}>Type</th>
+                  <th style={{ padding: "0.5rem", width: "180px" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedFiles.map((file) => (
+                  <tr
+                    key={file.name}
+                    tabIndex={file.isDirectory ? 0 : undefined}
+                    data-dir-row={file.isDirectory ? "true" : undefined}
+                    style={{
+                      borderBottom: "1px solid #eee",
+                      cursor: file.isDirectory ? "pointer" : "default",
+                    }}
+                    onClick={() => file.isDirectory && navigateTo(file.name)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" &&
+                      file.isDirectory &&
+                      navigateTo(file.name)
+                    }
+                    title={file.name}
+                  >
+                    <td style={{ padding: "0.5rem" }}>
+                      {!file.isDirectory && file.name !== ".." && (
+                        <input
+                          type="checkbox"
+                          checked={selectedForBulk.has(file.name)}
+                          onChange={(e) => { e.stopPropagation(); toggleFileSelect(file.name); }}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ cursor: "pointer" }}
+                        />
+                      )}
+                    </td>
+                    {file.parsed?.channel != null ? (
+                      <>
+                        <td style={{ padding: "0.5rem" }}>
+                          <span style={{ background: "#0066cc", color: "white", padding: "2px 6px", borderRadius: "10px", fontSize: "0.8rem", fontWeight: "bold" }}>
+                            {file.parsed.channel?.toUpperCase() || "-"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "0.5rem" }}>{formatDate(file.parsed.startTime || "")}</td>
+                        <td style={{ padding: "0.5rem" }}>{formatDate(file.parsed.endTime || "")}</td>
+                        <td style={{ padding: "0.5rem" }}>{file.parsed.duration || "-"}</td>
+                      </>
+                    ) : (
+                      <td
+                        colSpan={4}
+                        style={{
+                          padding: "0.5rem",
+                          color: file.isDirectory ? "#0066cc" : "inherit",
+                          fontWeight: file.isDirectory ? 600 : 400,
+                        }}
+                      >
+                        {file.isDirectory ? "[DIR] " : ""}
+                        {file.name}
+                      </td>
+                    )}
+                    <td style={{ padding: "0.5rem", color: "#666" }}>
+                      {file.isDirectory ? "-" : formatSize(file.size)}
+                    </td>
+                    <td style={{ padding: "0.5rem", color: "#666" }}>
+                      {formatDate(file.modifiedAt)}
+                    </td>
+                    <td
+                      style={{
+                        padding: "0.5rem",
+                        color: "#999",
+                        textTransform: "uppercase",
+                        fontSize: "0.8rem",
                       }}
-                      style={actionBtn("#0066cc")}
                     >
-                      Play
-                    </button>
-                  )}
-                  {!file.isDirectory && file.name !== ".." && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownload(file.name);
-                      }}
-                      style={actionBtn("#228B22")}
-                    >
-                      Download
-                    </button>
-                  )}
-                  {isAdmin && !file.isDirectory && file.name !== ".." && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(file.name);
-                      }}
-                      disabled={deletingFile === file.name}
-                      style={actionBtn("#cc0000")}
-                    >
-                      {deletingFile === file.name ? "..." : "Delete"}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      {file.isDirectory ? "dir" : getExtension(file.name) || "-"}
+                    </td>
+                    <td style={{ padding: "0.5rem", display: "flex", gap: "4px" }}>
+                      {!file.isDirectory && isPlayable(file.name) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFile(file.name);
+                          }}
+                          style={actionBtn("#0066cc")}
+                        >
+                          Play
+                        </button>
+                      )}
+                      {!file.isDirectory && file.name !== ".." && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(file.name);
+                          }}
+                          style={actionBtn("#228B22")}
+                        >
+                          Download
+                        </button>
+                      )}
+                      {isAdmin && !file.isDirectory && file.name !== ".." && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(file.name);
+                          }}
+                          disabled={deletingFile === file.name}
+                          style={actionBtn("#cc0000")}
+                        >
+                          {deletingFile === file.name ? "..." : "Delete"}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!loading && !error && sortedFiles.filter(f => f.name !== "..").length === 0 && (
+            <p style={{ color: "var(--color-text-faint)", textAlign: "center", padding: "3rem 1rem" }}>
+              No files found.{hasActiveFilters ? " Try adjusting your filters." : ""}
+            </p>
+          )}
+        </>
       )}
     </div>
   );

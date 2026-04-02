@@ -24,6 +24,7 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
   const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
   const [startOffset, setStartOffset] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
 
   const destroyCurrentSession = useCallback(() => {
     hlsRef.current?.destroy();
@@ -190,6 +191,12 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
         </span>
         <button
           onClick={onClose}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "none";
+          }}
           style={{
             background: "none",
             border: "none",
@@ -198,21 +205,29 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
             cursor: "pointer",
             padding: "0.25rem 0.5rem",
             lineHeight: 1,
+            borderRadius: "var(--radius-md)",
           }}
           aria-label="Close player"
         >
-          X
+          ×
         </button>
       </div>
 
       {status && (
-        <p style={{ color: "#aaa", fontSize: "0.9rem", margin: "1rem 0" }}>
+        <p
+          aria-live="polite"
+          style={{ color: "#aaa", fontSize: "0.9rem", margin: "1rem 0" }}
+        >
           {status}
         </p>
       )}
 
       {error && (
-        <p style={{ color: "#f66", fontSize: "0.9rem", margin: "1rem 0" }}>
+        <p
+          role="alert"
+          aria-live="assertive"
+          style={{ color: "#f66", fontSize: "0.9rem", margin: "1rem 0" }}
+        >
           {error}
         </p>
       )}
@@ -249,6 +264,31 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
           </div>
           <div
             onClick={handleSeekBarClick}
+            onKeyDown={(e) => {
+              if (!durationSeconds) return;
+              const step = Math.max(1, Math.floor(durationSeconds * 0.05));
+              if (e.key === "ArrowRight") {
+                e.preventDefault();
+                startStream(Math.min(durationSeconds, currentTime + step));
+              }
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                startStream(Math.max(0, currentTime - step));
+              }
+            }}
+            onMouseMove={(e) => {
+              if (!durationSeconds) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+              setHoverTime(Math.floor(ratio * durationSeconds));
+            }}
+            onMouseLeave={() => setHoverTime(null)}
+            tabIndex={0}
+            role="slider"
+            aria-label="Seek position"
+            aria-valuemin={0}
+            aria-valuemax={durationSeconds}
+            aria-valuenow={Math.floor(currentTime)}
             style={{
               width: "100%",
               height: "24px",
@@ -292,6 +332,25 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
                   />
                 );
               },
+            )}
+            {hoverTime !== null && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "-24px",
+                  left: `${(hoverTime / durationSeconds) * 100}%`,
+                  transform: "translateX(-50%)",
+                  background: "#000",
+                  color: "#fff",
+                  padding: "2px 6px",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "0.7rem",
+                  pointerEvents: "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {formatTime(hoverTime)}
+              </div>
             )}
           </div>
         </div>
