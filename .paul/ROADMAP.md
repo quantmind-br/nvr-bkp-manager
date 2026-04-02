@@ -19,7 +19,7 @@ Phases: 5 of 6 complete
 | 3 | Video Streaming (.dav Transcoding) | 03-01 | Complete | 2026-04-02 |
 | 4 | File Operations (CRUD) | 04-01 | Complete | 2026-04-02 |
 | 5 | Authentication & Security | 05-01 | Complete | 2026-04-02 |
-| 6 | Audit & Production Deploy | TBD | Not started | - |
+| 6 | Audit & Production Deploy | 06-01 | Planning | - |
 
 ## Phase Details
 
