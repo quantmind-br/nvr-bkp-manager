@@ -30,9 +30,10 @@ Centralizar, simplificar e democratizar o acesso ao gerenciamento de backups de 
 - Project scaffolding: monorepo, Docker Compose, dev environment (Phase 1)
 - Storage connection and file listing: SFTP service, REST API, file browser UI (Phase 2)
 - Video streaming: .dav remux via FFmpeg, .mp4 direct proxy, browser player (Phase 3)
+- File operations: download, upload, delete via web interface (Phase 4)
 
 ### Active (In Progress)
-- File operations: upload, download, delete via web interface (Phase 4)
+- Authentication and security: JWT auth, user management, route protection (Phase 5)
 
 ### Planned (Next)
 - CRUD completo de arquivos (upload, download, delete)
