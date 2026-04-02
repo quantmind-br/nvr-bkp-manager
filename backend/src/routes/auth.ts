@@ -4,6 +4,7 @@ import {
   verifyPassword,
   toSafeUser,
 } from "../services/users.js";
+import { logAction } from "../services/audit.js";
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Body: { username: string; password: string } }>(
@@ -17,15 +18,20 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           .send({ error: "Username and password required" });
       }
 
+      const ip = request.ip;
       const user = findUserByUsername(username);
       if (!user) {
+        logAction(null, username, "login_failed", "/api/auth/login", "User not found", ip);
         return reply.status(401).send({ error: "Invalid credentials" });
       }
 
       const valid = await verifyPassword(password, user.password);
       if (!valid) {
+        logAction(user.id, username, "login_failed", "/api/auth/login", "Wrong password", ip);
         return reply.status(401).send({ error: "Invalid credentials" });
       }
+
+      logAction(user.id, username, "login", "/api/auth/login", undefined, ip);
 
       const token = app.jwt.sign({
         sub: user.id,

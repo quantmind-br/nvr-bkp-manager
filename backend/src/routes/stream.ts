@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { createVideoStream } from "../services/stream.js";
+import { logAction } from "../services/audit.js";
 
 export async function streamRoutes(app: FastifyInstance) {
   app.get<{ Querystring: { file?: string } }>(
@@ -25,6 +26,8 @@ export async function streamRoutes(app: FastifyInstance) {
       }
 
       const { stream, contentType, cleanup } = videoStream;
+
+      logAction(request.user.sub, request.user.username, "stream", fileName, undefined, request.ip);
 
       // Use raw Node.js response for streaming
       const raw = reply.raw;

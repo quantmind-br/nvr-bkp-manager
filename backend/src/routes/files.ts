@@ -7,6 +7,7 @@ import {
   uploadFile,
 } from "../services/sftp.js";
 import { requireRole } from "../plugins/auth.js";
+import { logAction } from "../services/audit.js";
 
 function validateFileName(name: string | undefined): string | null {
   if (!name) return null;
@@ -124,6 +125,7 @@ export async function fileRoutes(app: FastifyInstance) {
 
       try {
         await deleteFile(fileName);
+        logAction(request.user.sub, request.user.username, "delete", fileName, undefined, request.ip);
         return { success: true, deleted: fileName };
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
@@ -160,6 +162,7 @@ export async function fileRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: "No files provided" });
       }
 
+      logAction(request.user.sub, request.user.username, "upload", uploaded.join(", "), undefined, request.ip);
       return { success: true, uploaded };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
