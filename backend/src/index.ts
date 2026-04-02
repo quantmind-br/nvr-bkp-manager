@@ -9,6 +9,7 @@ import { authRoutes } from "./routes/auth.js";
 import { fileRoutes } from "./routes/files.js";
 import { streamRoutes } from "./routes/stream.js";
 import { auditRoutes } from "./routes/audit.js";
+import { adminRoutes } from "./routes/admin.js";
 
 const app = Fastify({ logger: true });
 
@@ -24,6 +25,7 @@ await app.register(authRoutes);
 await app.register(fileRoutes);
 await app.register(streamRoutes);
 await app.register(auditRoutes);
+await app.register(adminRoutes);
 
 try {
   await app.listen({ port: config.port, host: config.host });

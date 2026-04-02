@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import type { FileEntry } from "../services/sftp.js";
+import type { FileEntry, SftpStream } from "../services/sftp.js";
 import {
   deleteFile,
   getFileSize,
   getReadStream,
   listFiles,
+  StorageNotConfiguredError,
   uploadFile,
 } from "../services/sftp.js";
 import { requireRole } from "../plugins/auth.js";
@@ -287,6 +288,10 @@ export async function fileRoutes(app: FastifyInstance) {
           }),
         );
       } catch (err) {
+        if (err instanceof StorageNotConfiguredError) {
+          return reply.status(503).send({ error: "Storage not configured" });
+        }
+
         const message = err instanceof Error ? err.message : "Unknown error";
         return reply
           .status(502)
@@ -361,6 +366,10 @@ export async function fileRoutes(app: FastifyInstance) {
       try {
         size = await getFileSize(remoteFilePath);
       } catch (err) {
+        if (err instanceof StorageNotConfiguredError) {
+          return reply.status(503).send({ error: "Storage not configured" });
+        }
+
         const message = err instanceof Error ? err.message : "Unknown error";
         return reply
           .status(502)
@@ -371,6 +380,10 @@ export async function fileRoutes(app: FastifyInstance) {
       try {
         sftpHandle = await getReadStream(remoteFilePath);
       } catch (err) {
+        if (err instanceof StorageNotConfiguredError) {
+          return reply.status(503).send({ error: "Storage not configured" });
+        }
+
         const message = err instanceof Error ? err.message : "Unknown error";
         return reply
           .status(502)
@@ -437,6 +450,10 @@ export async function fileRoutes(app: FastifyInstance) {
         logAction(request.user.sub, request.user.username, "delete", remoteFilePath, undefined, request.ip);
         return { success: true, deleted: fileName };
       } catch (err) {
+        if (err instanceof StorageNotConfiguredError) {
+          return reply.status(503).send({ error: "Storage not configured" });
+        }
+
         const message = err instanceof Error ? err.message : "Unknown error";
         return reply
           .status(502)
@@ -502,6 +519,10 @@ export async function fileRoutes(app: FastifyInstance) {
         );
         return { success: true, uploaded };
       } catch (err) {
+        if (err instanceof StorageNotConfiguredError) {
+          return reply.status(503).send({ error: "Storage not configured" });
+        }
+
         const message = err instanceof Error ? err.message : "Unknown error";
         return reply
           .status(502)
@@ -542,6 +563,10 @@ export async function fileRoutes(app: FastifyInstance) {
           logAction(request.user.sub, request.user.username, "delete", remoteFilePath, undefined, request.ip);
           results.push({ file: safe, success: true });
         } catch (err) {
+          if (err instanceof StorageNotConfiguredError) {
+            return reply.status(503).send({ error: "Storage not configured" });
+          }
+
           const message = err instanceof Error ? err.message : "Unknown error";
           results.push({ file: safe, success: false, error: message });
         }
@@ -582,6 +607,29 @@ export async function fileRoutes(app: FastifyInstance) {
         }
       }
 
+      const handles: Array<{ fileName: string; handle: SftpStream }> = [];
+
+      try {
+        for (const fileName of fileList) {
+          const remoteFilePath = buildRemotePath(remotePath, fileName);
+          const handle = await getReadStream(remoteFilePath);
+          handles.push({ fileName, handle });
+        }
+      } catch (err) {
+        for (const { handle } of handles) {
+          handle.sftp.end().catch(() => {});
+        }
+
+        if (err instanceof StorageNotConfiguredError) {
+          return reply.status(503).send({ error: "Storage not configured" });
+        }
+
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return reply
+          .status(502)
+          .send({ error: "Bulk download failed", details: message });
+      }
+
       const raw = reply.raw;
       raw.writeHead(200, {
         "Content-Type": "application/zip",
@@ -601,9 +649,7 @@ export async function fileRoutes(app: FastifyInstance) {
       archive.pipe(raw);
 
       try {
-        for (const fileName of fileList) {
-          const remoteFilePath = buildRemotePath(remotePath, fileName);
-          const handle = await getReadStream(remoteFilePath);
+        for (const { fileName, handle } of handles) {
           sftpClients.push(handle.sftp);
           archive.append(handle.stream, { name: fileName });
 

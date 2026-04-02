@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import {
   findUserByUsername,
+  getActiveUserForToken,
   verifyPassword,
   toSafeUser,
 } from "../services/users.js";
@@ -45,15 +46,31 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/api/auth/me", async (request, reply) => {
     try {
-      await request.jwtVerify();
+      const decoded = await request.jwtVerify<{
+        sub: number;
+        username: string;
+        role: "admin" | "viewer";
+        scope?: string;
+        file?: string;
+        path?: string;
+        iat?: number;
+      }>();
+      if (typeof decoded.iat !== "number") {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      const activeUser = getActiveUserForToken(decoded.sub, decoded.iat);
+      if (!activeUser) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      return {
+        id: activeUser.id,
+        username: activeUser.username,
+        role: activeUser.role,
+      };
     } catch {
       return reply.status(401).send({ error: "Unauthorized" });
     }
-
-    return {
-      id: request.user.sub,
-      username: request.user.username,
-      role: request.user.role,
-    };
   });
 }

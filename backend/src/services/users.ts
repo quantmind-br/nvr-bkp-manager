@@ -1,6 +1,27 @@
 import bcrypt from "bcryptjs";
 import db from "../db.js";
 
+export class UserNotFoundError extends Error {
+  constructor(id: number) {
+    super(`User not found: ${id}`);
+    this.name = "UserNotFoundError";
+  }
+}
+
+export class UserConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UserConflictError";
+  }
+}
+
+export class UserProtectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UserProtectionError";
+  }
+}
+
 export interface User {
   id: number;
   username: string;
@@ -63,15 +84,151 @@ export async function createUser(
   role: "admin" | "viewer",
 ): Promise<SafeUser> {
   const hashed = await hashPassword(plainPassword);
-  const result = db
-    .prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)")
-    .run(username, hashed, role);
 
-  const user = findUserById(Number(result.lastInsertRowid))!;
-  return toSafeUser(user);
+  try {
+    const result = db
+      .prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)")
+      .run(username, hashed, role);
+
+    const user = findUserById(Number(result.lastInsertRowid))!;
+    return toSafeUser(user);
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message.includes("UNIQUE constraint failed")) {
+      throw new UserConflictError("Username already exists");
+    }
+    throw err;
+  }
 }
 
 export function toSafeUser(user: User): SafeUser {
   const { password: _, ...safe } = user;
   return safe;
+}
+
+export function listUsers(): SafeUser[] {
+  return db
+    .prepare(
+      "SELECT id, username, role, created_at, updated_at FROM users ORDER BY username COLLATE NOCASE ASC, id ASC",
+    )
+    .all() as SafeUser[];
+}
+
+export function countAdmins(): number {
+  const row = db
+    .prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+    .get() as { count: number };
+  return row.count;
+}
+
+export function getActiveUserForToken(
+  userId: number,
+  tokenIssuedAtSeconds: number,
+): SafeUser | null {
+  const user = findUserById(userId);
+  if (!user) {
+    return null;
+  }
+
+  const updatedAtSeconds = Math.floor(
+    new Date(`${user.updated_at.replace(" ", "T")}Z`).getTime() / 1000,
+  );
+
+  if (tokenIssuedAtSeconds < updatedAtSeconds) {
+    return null;
+  }
+
+  return toSafeUser(user);
+}
+
+export async function updateUserByAdmin(
+  targetUserId: number,
+  actorUserId: number,
+  input: { username?: string; role?: "admin" | "viewer"; password?: string },
+): Promise<SafeUser> {
+  void actorUserId;
+
+  // Hash password before transaction (async, no DB access)
+  let hashedPassword: string | undefined;
+  if (input.password !== undefined && input.password !== "") {
+    hashedPassword = await hashPassword(input.password);
+  }
+
+  return db.transaction(() => {
+    const targetUser = findUserById(targetUserId);
+    if (!targetUser) {
+      throw new UserNotFoundError(targetUserId);
+    }
+
+    if (
+      input.role !== undefined &&
+      input.role !== targetUser.role &&
+      targetUser.role === "admin" &&
+      input.role === "viewer" &&
+      countAdmins() === 1
+    ) {
+      throw new UserProtectionError("Cannot demote the last admin user");
+    }
+
+    const setClauses: string[] = [];
+    const params: Array<string | number> = [];
+
+    if (input.username !== undefined) {
+      const username = input.username.trim();
+      const existingUser = db
+        .prepare("SELECT id FROM users WHERE username = ? AND id != ?")
+        .get(username, targetUserId) as { id: number } | undefined;
+
+      if (existingUser) {
+        throw new UserConflictError("Username already exists");
+      }
+
+      setClauses.push("username = ?");
+      params.push(username);
+    }
+
+    if (input.role !== undefined) {
+      setClauses.push("role = ?");
+      params.push(input.role);
+    }
+
+    if (hashedPassword !== undefined) {
+      setClauses.push("password = ?");
+      params.push(hashedPassword);
+    }
+
+    setClauses.push("updated_at = datetime('now')");
+    params.push(targetUserId);
+
+    db.prepare(`UPDATE users SET ${setClauses.join(", ")} WHERE id = ?`).run(
+      ...params,
+    );
+
+    return toSafeUser(findUserById(targetUserId)!);
+  })();
+}
+
+const deleteUserByAdminTransaction = db.transaction(
+  (targetUserId: number, actorUserId: number): void => {
+    if (targetUserId === actorUserId) {
+      throw new UserProtectionError("Cannot delete your own account");
+    }
+
+    const targetUser = findUserById(targetUserId);
+    if (!targetUser) {
+      throw new UserNotFoundError(targetUserId);
+    }
+
+    if (targetUser.role === "admin" && countAdmins() === 1) {
+      throw new UserProtectionError("Cannot delete the last admin user");
+    }
+
+    db.prepare("DELETE FROM users WHERE id = ?").run(targetUserId);
+  },
+);
+
+export function deleteUserByAdmin(
+  targetUserId: number,
+  actorUserId: number,
+): void {
+  deleteUserByAdminTransaction(targetUserId, actorUserId);
 }

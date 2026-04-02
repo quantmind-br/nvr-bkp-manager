@@ -1,9 +1,18 @@
+import { Navigate, NavLink, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth";
 import LoginPage from "./components/LoginPage";
 import FileList from "./components/FileList";
+import AdminPanel from "./components/admin/AdminPanel";
+
+const navLinkBaseStyle = {
+  textDecoration: "none",
+  fontSize: "0.95rem",
+  paddingBottom: "0.35rem",
+  borderBottom: "2px solid transparent",
+};
 
 export default function App() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, isAdmin } = useAuth();
 
   if (loading) {
     return (
@@ -50,6 +59,40 @@ export default function App() {
         }}
       >
         <h1 style={{ margin: 0, fontSize: "1.5rem" }}>NVR Backup Manager</h1>
+        <nav
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "1rem",
+            flex: 1,
+          }}
+        >
+          <NavLink
+            to="/"
+            style={({ isActive }) => ({
+              ...navLinkBaseStyle,
+              color: isActive ? "var(--color-text)" : "var(--color-text-muted)",
+              fontWeight: isActive ? 600 : 400,
+              borderBottomColor: isActive ? "var(--color-primary)" : "transparent",
+            })}
+          >
+            Files
+          </NavLink>
+          {isAdmin ? (
+            <NavLink
+              to="/admin"
+              style={({ isActive }) => ({
+                ...navLinkBaseStyle,
+                color: isActive ? "var(--color-text)" : "var(--color-text-muted)",
+                fontWeight: isActive ? 600 : 400,
+                borderBottomColor: isActive ? "var(--color-primary)" : "transparent",
+              })}
+            >
+              Administration
+            </NavLink>
+          ) : null}
+        </nav>
         <div
           style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}
         >
@@ -72,7 +115,14 @@ export default function App() {
           </button>
         </div>
       </header>
-      <FileList />
+      <Routes>
+        <Route path="/" element={<FileList />} />
+        <Route
+          path="/admin"
+          element={isAdmin ? <AdminPanel /> : <Navigate to="/" replace />}
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }

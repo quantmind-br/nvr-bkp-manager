@@ -18,12 +18,4 @@ export const config = {
   },
 
   defaultAdminPassword: process.env["DEFAULT_ADMIN_PASSWORD"] ?? "admin",
-
-  storage: {
-    host: process.env["STORAGE_HOST"] ?? "",
-    port: parseInt(process.env["STORAGE_PORT"] ?? "23", 10),
-    user: process.env["STORAGE_USER"] ?? "",
-    password: process.env["STORAGE_PASSWORD"] ?? "",
-    path: process.env["STORAGE_PATH"] ?? "/home/backups/nvr",
-  },
 };

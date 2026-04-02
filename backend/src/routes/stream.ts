@@ -8,6 +8,11 @@ import {
   removeSession,
 } from "../services/stream.js";
 import { logAction } from "../services/audit.js";
+import {
+  StorageNotConfiguredError,
+  testConnection,
+  type SftpStream,
+} from "../services/sftp.js";
 import { buildRemotePath, validatePath } from "./files.js";
 
 export async function streamRoutes(app: FastifyInstance) {
@@ -38,6 +43,19 @@ export async function streamRoutes(app: FastifyInstance) {
       }
 
       const remoteFilePath = buildRemotePath(remotePath, fileName);
+
+      try {
+        const storageConnected = await testConnection();
+        if (!storageConnected) {
+          return reply.status(502).send({ error: "Storage connection failed" });
+        }
+      } catch (err) {
+        if (err instanceof StorageNotConfiguredError) {
+          return reply.status(503).send({ error: "Storage not configured" });
+        }
+
+        throw err;
+      }
 
       // Parse duration from filename (no I/O needed)
       const durationMatch = fileName.match(
@@ -152,7 +170,7 @@ export async function streamRoutes(app: FastifyInstance) {
   );
 
   // Debug: test individual pipeline components
-  app.get<{ Querystring: { test?: string } }>("/api/stream/debug", async (request) => {
+  app.get<{ Querystring: { test?: string } }>("/api/stream/debug", async (request, reply) => {
     const test = request.query.test ?? "info";
 
     if (test === "info") {
@@ -168,18 +186,37 @@ export async function streamRoutes(app: FastifyInstance) {
 
     if (test === "sftp") {
       const { getReadStream } = await import("../services/sftp.js");
-      const handle = await getReadStream("ch0_2026-02-03_07-11-54_2026-02-03_07-13-41.dav");
-      let bytes = 0;
-      await new Promise<void>((resolve, reject) => {
-        handle.stream.on("data", (chunk: Buffer) => {
-          bytes += chunk.length;
-          if (bytes > 4096) { handle.stream.destroy(); resolve(); }
+      let handle: SftpStream | undefined;
+
+      try {
+        const activeHandle = await getReadStream("ch0_2026-02-03_07-11-54_2026-02-03_07-13-41.dav");
+        handle = activeHandle;
+        let bytes = 0;
+        await new Promise<void>((resolve, reject) => {
+          activeHandle.stream.on("data", (chunk: Buffer) => {
+            bytes += chunk.length;
+            if (bytes > 4096) {
+              activeHandle.stream.destroy();
+              resolve();
+            }
+          });
+          activeHandle.stream.on("error", reject);
+          setTimeout(() => {
+            activeHandle.stream.destroy();
+            resolve();
+          }, 10000);
         });
-        handle.stream.on("error", reject);
-        setTimeout(() => { handle.stream.destroy(); resolve(); }, 10000);
-      });
-      handle.sftp.end().catch(() => {});
-      return { sftp: "ok", bytesRead: bytes };
+
+        return { sftp: "ok", bytesRead: bytes };
+      } catch (err) {
+        if (err instanceof StorageNotConfiguredError) {
+          return reply.status(503).send({ error: "Storage not configured" });
+        }
+
+        throw err;
+      } finally {
+        handle?.sftp.end().catch(() => {});
+      }
     }
 
     if (test === "ffmpeg") {
@@ -192,37 +229,49 @@ export async function streamRoutes(app: FastifyInstance) {
       const testDir = join(tmpdir(), "nvr-hls-debug-test");
       mkdirSync(testDir, { recursive: true });
 
-      const handle = await getReadStream("ch0_2026-02-03_07-11-54_2026-02-03_07-13-41.dav");
-      const ffmpeg = spawn("ffmpeg", [
-        "-f", "hevc", "-i", "pipe:0",
-        "-t", "8", "-c:v", "copy", "-an",
-        "-g", "48", "-keyint_min", "48",
-        "-f", "hls", "-hls_time", "4", "-hls_list_size", "0",
-        "-hls_playlist_type", "event", "-hls_flags", "append_list",
-        "-hls_segment_filename", join(testDir, "seg_%04d.ts"),
-        join(testDir, "stream.m3u8"),
-      ], { stdio: ["pipe", "pipe", "pipe"] });
+      let handle: SftpStream | undefined;
 
-      handle.stream.pipe(ffmpeg.stdin!);
-      let stderr = "";
-      ffmpeg.stderr?.on("data", (d: Buffer) => { stderr += d.toString(); });
+      try {
+        const activeHandle = await getReadStream("ch0_2026-02-03_07-11-54_2026-02-03_07-13-41.dav");
+        handle = activeHandle;
+        const ffmpeg = spawn("ffmpeg", [
+          "-f", "hevc", "-i", "pipe:0",
+          "-t", "8", "-c:v", "copy", "-an",
+          "-g", "48", "-keyint_min", "48",
+          "-f", "hls", "-hls_time", "4", "-hls_list_size", "0",
+          "-hls_playlist_type", "event", "-hls_flags", "append_list",
+          "-hls_segment_filename", join(testDir, "seg_%04d.ts"),
+          join(testDir, "stream.m3u8"),
+        ], { stdio: ["pipe", "pipe", "pipe"] });
 
-      const code = await new Promise<number | null>((resolve) => {
-        const timeout = setTimeout(() => { ffmpeg.kill("SIGKILL"); resolve(-1); }, 60000);
-        ffmpeg.on("close", (c) => { clearTimeout(timeout); resolve(c); });
-      });
+        activeHandle.stream.pipe(ffmpeg.stdin!);
+        let stderr = "";
+        ffmpeg.stderr?.on("data", (d: Buffer) => { stderr += d.toString(); });
 
-      handle.sftp.end().catch(() => {});
-      const files = existsSync(testDir) ? readdirSync(testDir) : [];
-      const errLines = stderr.split("\n").filter(l => l.toLowerCase().includes("error")).slice(0, 3);
-      const frameMatch = stderr.match(/frame=\s*(\d+)/);
+        const code = await new Promise<number | null>((resolve) => {
+          const timeout = setTimeout(() => { ffmpeg.kill("SIGKILL"); resolve(-1); }, 60000);
+          ffmpeg.on("close", (c) => { clearTimeout(timeout); resolve(c); });
+        });
 
-      return {
-        ffmpeg: code === 0 ? "ok" : `exit ${code}`,
-        frames: frameMatch?.[1] ?? "0",
-        outputFiles: files,
-        errors: errLines.length ? errLines : undefined,
-      };
+        const files = existsSync(testDir) ? readdirSync(testDir) : [];
+        const errLines = stderr.split("\n").filter(l => l.toLowerCase().includes("error")).slice(0, 3);
+        const frameMatch = stderr.match(/frame=\s*(\d+)/);
+
+        return {
+          ffmpeg: code === 0 ? "ok" : `exit ${code}`,
+          frames: frameMatch?.[1] ?? "0",
+          outputFiles: files,
+          errors: errLines.length ? errLines : undefined,
+        };
+      } catch (err) {
+        if (err instanceof StorageNotConfiguredError) {
+          return reply.status(503).send({ error: "Storage not configured" });
+        }
+
+        throw err;
+      } finally {
+        handle?.sftp.end().catch(() => {});
+      }
     }
 
     return { error: "Unknown test. Use ?test=info|sftp|ffmpeg" };
