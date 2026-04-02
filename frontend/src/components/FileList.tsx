@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import VideoPlayer from "./VideoPlayer";
 import UploadButton from "./UploadButton";
 import { useAuth } from "../auth";
@@ -68,34 +68,26 @@ export default function FileList() {
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
 
   const [channelFilter, setChannelFilter] = useState("");
-  const [debouncedChannel, setDebouncedChannel] = useState("");
-  const [startDateFilter, setStartDateFilter] = useState("");
-  const [endDateFilter, setEndDateFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
 
   const [sortColumn, setSortColumn] = useState<"channel" | "start" | "end">("start");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedChannel(channelFilter), 300);
-    return () => clearTimeout(timer);
-  }, [channelFilter]);
-
-  useEffect(() => {
     setChannelFilter("");
-    setDebouncedChannel("");
-    setStartDateFilter("");
-    setEndDateFilter("");
+    setDateFilter("");
   }, [currentPath]);
 
-  const fetchFiles = useCallback(async (path: string, channel: string, start: string, end: string) => {
+  const fetchFiles = useCallback(async (path: string, date: string) => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
       params.append("path", path);
-      if (channel) params.append("channel", channel);
-      if (start) params.append("startDate", start);
-      if (end) params.append("endDate", end);
+      if (date) {
+        params.append("startDate", date);
+        params.append("endDate", date);
+      }
 
       const res = await apiFetch(`/api/files?${params.toString()}`);
       if (!res.ok) {
@@ -115,8 +107,8 @@ export default function FileList() {
   }, []);
 
   useEffect(() => {
-    fetchFiles(currentPath, debouncedChannel, startDateFilter, endDateFilter);
-  }, [currentPath, debouncedChannel, startDateFilter, endDateFilter, fetchFiles]);
+    fetchFiles(currentPath, dateFilter);
+  }, [currentPath, dateFilter, fetchFiles]);
 
   function handleDownload(fileName: string) {
     const token = localStorage.getItem("token") ?? "";
@@ -143,7 +135,7 @@ export default function FileList() {
           (body as { error?: string }).error ?? `HTTP ${res.status}`,
         );
       }
-      fetchFiles(currentPath, debouncedChannel, startDateFilter, endDateFilter);
+      fetchFiles(currentPath, dateFilter);
     } catch (err) {
       alert(
         `Delete failed: ${err instanceof Error ? err.message : "Unknown error"}`,
@@ -165,7 +157,24 @@ export default function FileList() {
     }
   }
 
-  const sortedFiles = [...files].sort((a, b) => {
+  const availableChannels = useMemo(() => {
+    const channels = new Set<string>();
+    for (const f of files) {
+      if (f.parsed?.channel) channels.add(f.parsed.channel);
+    }
+    return Array.from(channels).sort();
+  }, [files]);
+
+  const channelFilteredFiles = useMemo(() => {
+    if (!channelFilter) return files;
+    return files.filter((f) => {
+      if (f.isDirectory) return true;
+      const ch = f.parsed?.channel?.toLowerCase();
+      return ch != null && ch === channelFilter.toLowerCase();
+    });
+  }, [files, channelFilter]);
+
+  const sortedFiles = [...channelFilteredFiles].sort((a, b) => {
     if (a.name === "..") return -1;
     if (b.name === "..") return 1;
     if (a.isDirectory && !b.isDirectory) return -1;
@@ -220,7 +229,7 @@ export default function FileList() {
           <span style={{ color: "#666", fontSize: "0.8rem" }}>
             {!loading && `${sortedFiles.filter((f) => f.name !== "..").length} items`}
           </span>
-          {isAdmin && <UploadButton onUploadComplete={() => fetchFiles(currentPath, debouncedChannel, startDateFilter, endDateFilter)} />}
+          {isAdmin && <UploadButton onUploadComplete={() => fetchFiles(currentPath, dateFilter)} />}
         </span>
       </div>
 
@@ -239,41 +248,33 @@ export default function FileList() {
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <label htmlFor="channelFilter" style={{ fontWeight: 600 }}>Channel:</label>
-          <input
+          <select
             id="channelFilter"
-            type="text"
-            placeholder="e.g. ch0"
             value={channelFilter}
             onChange={(e) => setChannelFilter(e.target.value)}
-            style={{ padding: "0.25rem 0.5rem", borderRadius: "3px", border: "1px solid #ccc" }}
-          />
+            style={{ padding: "0.25rem 0.5rem", borderRadius: "3px", border: "1px solid #ccc", background: "#fff" }}
+          >
+            <option value="">All</option>
+            {availableChannels.map((ch) => (
+              <option key={ch} value={ch}>{ch.toUpperCase()}</option>
+            ))}
+          </select>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <label htmlFor="startDateFilter" style={{ fontWeight: 600 }}>From:</label>
+          <label htmlFor="dateFilter" style={{ fontWeight: 600 }}>Date:</label>
           <input
-            id="startDateFilter"
+            id="dateFilter"
             type="date"
-            value={startDateFilter}
-            onChange={(e) => setStartDateFilter(e.target.value)}
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
             style={{ padding: "0.25rem 0.5rem", borderRadius: "3px", border: "1px solid #ccc" }}
           />
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <label htmlFor="endDateFilter" style={{ fontWeight: 600 }}>To:</label>
-          <input
-            id="endDateFilter"
-            type="date"
-            value={endDateFilter}
-            onChange={(e) => setEndDateFilter(e.target.value)}
-            style={{ padding: "0.25rem 0.5rem", borderRadius: "3px", border: "1px solid #ccc" }}
-          />
-        </div>
-        {(channelFilter || startDateFilter || endDateFilter) && (
+        {(channelFilter || dateFilter) && (
           <button
             onClick={() => {
               setChannelFilter("");
-              setStartDateFilter("");
-              setEndDateFilter("");
+              setDateFilter("");
             }}
             style={{
               background: "none",
@@ -287,7 +288,7 @@ export default function FileList() {
             Clear Filters
           </button>
         )}
-        {(channelFilter || startDateFilter || endDateFilter) && (
+        {(channelFilter || dateFilter) && (
           <span style={{ color: "#666", fontSize: "0.8rem", marginLeft: "auto" }}>
             (filtered)
           </span>
