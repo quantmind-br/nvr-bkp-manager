@@ -143,63 +143,56 @@ export async function streamRoutes(app: FastifyInstance) {
     },
   );
 
-  // Debug: test SFTP + FFmpeg pipeline
-  app.get("/api/stream/debug", async () => {
-    const { spawn } = await import("child_process");
-    const { listFiles, getReadStream } = await import("../services/sftp.js");
-    const results: string[] = [];
+  // Debug: test individual pipeline components
+  app.get<{ Querystring: { test?: string } }>("/api/stream/debug", async (request) => {
+    const test = request.query.test ?? "info";
 
-    // Test 1: SFTP list (same as /api/files)
-    try {
-      const files = await listFiles("/");
-      results.push(`SFTP list: OK (${files.length} files)`);
-    } catch (e) {
-      results.push(`SFTP list: FAILED - ${e instanceof Error ? e.message : e}`);
+    if (test === "info") {
+      const { tmpdir } = await import("os");
+      const { writeFileSync, unlinkSync, readdirSync } = await import("fs");
+      const tmp = tmpdir();
+      const testFile = `${tmp}/nvr-test`;
+      writeFileSync(testFile, "ok");
+      unlinkSync(testFile);
+      const hlsDirs = readdirSync(tmp).filter(f => f.startsWith("nvr-hls-"));
+      return { tmp, writable: true, hlsSessions: hlsDirs.length, hlsDirs };
     }
 
-    // Test 2: SFTP read stream
-    try {
+    if (test === "sftp") {
+      const { getReadStream } = await import("../services/sftp.js");
       const handle = await getReadStream("ch0_2026-02-03_07-11-54_2026-02-03_07-13-41.dav");
-      results.push("SFTP readStream: connected");
-      // Read a small chunk to confirm stream works
+      let bytes = 0;
       await new Promise<void>((resolve, reject) => {
-        let bytes = 0;
         handle.stream.on("data", (chunk: Buffer) => {
           bytes += chunk.length;
-          if (bytes > 1024) {
-            handle.stream.destroy();
-            resolve();
-          }
+          if (bytes > 4096) { handle.stream.destroy(); resolve(); }
         });
         handle.stream.on("error", reject);
-        setTimeout(() => reject(new Error("timeout")), 15000);
+        setTimeout(() => { handle.stream.destroy(); resolve(); }, 10000);
       });
-      results.push("SFTP readStream: data received");
       handle.sftp.end().catch(() => {});
-    } catch (e) {
-      results.push(`SFTP readStream: FAILED - ${e instanceof Error ? e.message : e}`);
+      return { sftp: "ok", bytesRead: bytes };
     }
 
-    // Test 3: FFmpeg pipe test (small)
-    try {
-      const ver = await new Promise<string>((resolve) => {
-        const p = spawn("ffmpeg", ["-version"]);
-        let out = "";
-        p.stdout.on("data", (d: Buffer) => { out += d.toString(); });
-        p.on("close", () => resolve(out.split("\n")[0] ?? "unknown"));
-      });
-      results.push(`FFmpeg: ${ver}`);
-    } catch (e) {
-      results.push(`FFmpeg: FAILED - ${e instanceof Error ? e.message : e}`);
-    }
+    if (test === "ffmpeg") {
+      const { spawn } = await import("child_process");
+      const { getReadStream } = await import("../services/sftp.js");
+      const { mkdirSync, existsSync, readdirSync } = await import("fs");
+      const { join } = await import("path");
+      const { tmpdir } = await import("os");
 
-    // Test 4: FFmpeg transcode test (pipe SFTP → FFmpeg for 3 seconds)
-    try {
+      const testDir = join(tmpdir(), "nvr-hls-debug-test");
+      mkdirSync(testDir, { recursive: true });
+
       const handle = await getReadStream("ch0_2026-02-03_07-11-54_2026-02-03_07-13-41.dav");
       const ffmpeg = spawn("ffmpeg", [
         "-f", "hevc", "-i", "pipe:0",
-        "-t", "3", "-c:v", "libx264", "-preset", "ultrafast",
-        "-f", "null", "-",
+        "-t", "8", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+        "-g", "48", "-keyint_min", "48",
+        "-f", "hls", "-hls_time", "4", "-hls_list_size", "0",
+        "-hls_playlist_type", "event", "-hls_flags", "append_list",
+        "-hls_segment_filename", join(testDir, "seg_%04d.ts"),
+        join(testDir, "stream.m3u8"),
       ], { stdio: ["pipe", "pipe", "pipe"] });
 
       handle.stream.pipe(ffmpeg.stdin!);
@@ -207,34 +200,24 @@ export async function streamRoutes(app: FastifyInstance) {
       ffmpeg.stderr?.on("data", (d: Buffer) => { stderr += d.toString(); });
 
       const code = await new Promise<number | null>((resolve) => {
-        const timeout = setTimeout(() => { ffmpeg.kill(); resolve(-1); }, 30000);
+        const timeout = setTimeout(() => { ffmpeg.kill("SIGKILL"); resolve(-1); }, 60000);
         ffmpeg.on("close", (c) => { clearTimeout(timeout); resolve(c); });
       });
 
       handle.sftp.end().catch(() => {});
+      const files = existsSync(testDir) ? readdirSync(testDir) : [];
+      const errLines = stderr.split("\n").filter(l => l.toLowerCase().includes("error")).slice(0, 3);
       const frameMatch = stderr.match(/frame=\s*(\d+)/);
-      results.push(`FFmpeg transcode: exit=${code} frames=${frameMatch?.[1] ?? "0"}`);
-      if (code !== 0) {
-        const errLines = stderr.split("\n").filter(l => l.toLowerCase().includes("error"));
-        if (errLines.length) results.push(`FFmpeg errors: ${errLines.join("; ").slice(0, 200)}`);
-      }
-    } catch (e) {
-      results.push(`FFmpeg transcode: FAILED - ${e instanceof Error ? e.message : e}`);
+
+      return {
+        ffmpeg: code === 0 ? "ok" : `exit ${code}`,
+        frames: frameMatch?.[1] ?? "0",
+        outputFiles: files,
+        errors: errLines.length ? errLines : undefined,
+      };
     }
 
-    // Test 5: /tmp writable
-    try {
-      const { writeFileSync, unlinkSync } = await import("fs");
-      const { tmpdir } = await import("os");
-      const testFile = `${tmpdir()}/nvr-test-write`;
-      writeFileSync(testFile, "test");
-      unlinkSync(testFile);
-      results.push(`Tmpdir: ${tmpdir()} writable`);
-    } catch (e) {
-      results.push(`Tmpdir: FAILED - ${e instanceof Error ? e.message : e}`);
-    }
-
-    return { results };
+    return { error: "Unknown test. Use ?test=info|sftp|ffmpeg" };
   });
 
   // Stop a session and clean up
