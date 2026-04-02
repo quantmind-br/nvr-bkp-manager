@@ -79,11 +79,7 @@ export async function createHlsSession(
     "ffmpeg",
     [
       ...inputArgs,
-      "-vf", "scale=854:-2,fps=10",
-      "-c:v", "libx264",
-      "-preset", "ultrafast",
-      "-tune", "zerolatency",
-      "-crf", "32",
+      "-c:v", "copy",
       "-an",
       "-f", "hls",
       "-hls_time", "4",

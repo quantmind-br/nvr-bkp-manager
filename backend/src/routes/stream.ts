@@ -187,7 +187,7 @@ export async function streamRoutes(app: FastifyInstance) {
       const handle = await getReadStream("ch0_2026-02-03_07-11-54_2026-02-03_07-13-41.dav");
       const ffmpeg = spawn("ffmpeg", [
         "-f", "hevc", "-i", "pipe:0",
-        "-t", "8", "-vf", "scale=854:-2,fps=10", "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "32",
+        "-t", "8", "-c:v", "copy", "-an",
         "-g", "48", "-keyint_min", "48",
         "-f", "hls", "-hls_time", "4", "-hls_list_size", "0",
         "-hls_playlist_type", "event", "-hls_flags", "append_list",
