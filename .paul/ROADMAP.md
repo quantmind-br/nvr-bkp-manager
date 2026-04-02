@@ -8,13 +8,13 @@ Do conceito ao deploy: construir uma plataforma web que conecta a Storage Boxes 
 
 **v0.1 Initial Release** (v0.1.0)
 Status: In progress
-Phases: 0 of 6 complete
+Phases: 1 of 6 complete
 
 ## Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 | Project Foundation | 01-01 | Not started | - |
+| 1 | Project Foundation | 01-01 | Complete | 2026-04-02 |
 | 2 | Storage Connection & File Listing | TBD | Not started | - |
 | 3 | Video Streaming (.dav Transcoding) | TBD | Not started | - |
 | 4 | File Operations (CRUD) | TBD | Not started | - |

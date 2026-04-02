@@ -13,8 +13,8 @@ Centralizar, simplificar e democratizar o acesso ao gerenciamento de backups de 
 | Attribute | Value |
 |-----------|-------|
 | Type | Application |
-| Version | 0.0.0 |
-| Status | Initializing |
+| Version | 0.0.1 |
+| Status | In Progress |
 | Last Updated | 2026-04-02 |
 
 ## Requirements
@@ -27,13 +27,12 @@ Centralizar, simplificar e democratizar o acesso ao gerenciamento de backups de 
 - Autenticacao e Acesso: login seguro com niveis de permissao (admin/viewer) para proteger acesso as gravacoes
 
 ### Validated (Shipped)
-None yet.
+- Project scaffolding: monorepo, Docker Compose, dev environment (Phase 1)
 
 ### Active (In Progress)
-None yet.
+- MVP: conexao ao Storage Box, listagem de arquivos e streaming de .dav no navegador
 
 ### Planned (Next)
-- MVP: conexao ao Storage Box, listagem de arquivos e streaming de .dav no navegador
 - CRUD completo de arquivos (upload, download, delete)
 - Sistema de autenticacao e controle de acesso
 - Logs de auditoria para acoes criticas
