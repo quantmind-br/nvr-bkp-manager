@@ -1,0 +1,79 @@
+{
+  "active_plan": "/home/diogo/dev/nvr-bkp-manager/.sisyphus/plans/ui-ux-improvements.md",
+  "started_at": "2026-04-02T18:32:25.077Z",
+  "session_ids": [
+    "ses_2b0a0a0bbffeNfPCEmxSWCYM0o",
+    "ses_2b085a922ffeocdNSKXYFXwGsp",
+    "ses_2b085a91fffeDXySnyLXAdEFBG",
+    "ses_2b085a900ffe5tcLk42gwQ1AMs",
+    "ses_2b0820cd8ffeU9BvfDIWR4J6tc",
+    "ses_2b0820cd7ffe1jWLQ7LyqeUEp6",
+    "ses_2b07dbaaaffetB8OND9CyesSZY",
+    "ses_2b07dbaabffeOwy0GZ0y8S6XSJ",
+    "ses_2b0797220ffeArkmSRWe2pT2py",
+    "ses_2b07489c6ffeHdIe9qcR4LYQpj",
+    "ses_2b06f6a77ffekSJlVMdGb5c2Ua",
+    "ses_2b0680003ffeRBAC5AQVgtUji3",
+    "ses_2b0680004ffcJfyfhsag12L0OD",
+    "ses_2b0680004ffe5jYIvZodtmXlPl",
+    "ses_2b0680007ffectSwqo4EjaGOL5"
+  ],
+  "plan_name": "ui-ux-improvements",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "Establish the shared style/token foundation",
+      "session_id": "ses_2b0820cd8ffeU9BvfDIWR4J6tc",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-02T18:40:05.877Z"
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "Refine file-list feedback, responsiveness, and keyboard entry points",
+      "session_id": "ses_2b07dbaabffeOwy0GZ0y8S6XSJ",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-02T18:45:47.173Z"
+    },
+    "todo:6": {
+      "task_key": "todo:6",
+      "task_label": "6",
+      "task_title": "Add breadcrumb navigation and clarify date-filter modes",
+      "session_id": "ses_2b0797220ffeArkmSRWe2pT2py",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-02T18:50:26.901Z"
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "Replace blocking delete dialogs and harden single-file download links",
+      "session_id": "ses_2b07489c6ffeHdIe9qcR4LYQpj",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-02T18:57:02.647Z"
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "Sweep remaining magic colors into the shared token system",
+      "session_id": "ses_2b06f6a77ffekSJlVMdGb5c2Ua",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-02T19:04:50.504Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "Plan Compliance Audit — oracle",
+      "session_id": "ses_2b0680007ffectSwqo4EjaGOL5",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-02T19:13:48.524Z"
+    }
+  }
+}

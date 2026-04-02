@@ -63,7 +63,7 @@ async function authPlugin(app: FastifyInstance): Promise<void> {
       }
 
       if (
-        (url.startsWith("/api/stream") || url === "/api/download") &&
+        url === "/api/download" &&
         query["downloadToken"]
       ) {
         try {

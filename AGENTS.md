@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
 **Generated:** 2026-04-02
-**Commit:** 78ec31a
+**Commit:** 181d64e
 **Branch:** master
 
 ## OVERVIEW
@@ -27,7 +27,8 @@ NVR (Network Video Recorder) backup file manager. Browse, stream, download, uplo
 |------|----------|-------|
 | Add an API endpoint | `backend/src/routes/` | Register in `backend/src/index.ts` |
 | Add SFTP/storage logic | `backend/src/services/sftp.ts` | All SFTP ops go here |
-| Add video transcoding | `backend/src/services/stream.ts` | FFmpeg .dav→mp4 pipe |
+| Add video transcoding | `backend/src/services/stream.ts` | FFmpeg .dav→mp4 pipe + HLS session mgmt |
+| Parse NVR filenames | `backend/src/services/filenameParser.ts` | Regex: `channel_startdate_starttime_enddate_endtime.ext` |
 | Change auth/JWT | `backend/src/plugins/auth.ts` | JWT plugin + `requireRole()` |
 | Add DB table/migration | `backend/src/services/` + `seed.ts` | Schema in `init*Table()`, seed in `seedDatabase()` |
 | Add/change frontend page | `frontend/src/components/` | Auth-gated via `useAuth()` |
@@ -44,6 +45,9 @@ NVR (Network Video Recorder) backup file manager. Browse, stream, download, uplo
 - **Token passthrough**: Stream/download endpoints accept `?token=` query param (HTML5 video/anchor tags can't set headers)
 - **Roles**: `admin` (full CRUD) and `viewer` (read-only: browse, stream, download). Enforced via `requireRole()` preHandler
 - **Filename validation**: All file operations validate against path traversal (`/`, `\\`, `..` in filenames)
+- **NVR filename format**: `CHANNEL_YYYY-MM-DD_HH-MM-SS_YYYY-MM-DD_HH-MM-SS.ext` — parsed by `filenameParser.ts`
+- **File filtering**: `GET /api/files` supports `channel`, `startDate`, `endDate`, `minSize`, `maxSize` query params
+- **Bulk operations**: `POST /api/bulk-delete` (admin), `POST /api/bulk-download` (zip via `archiver`)
 - **Streaming**: Routes use `reply.hijack()` for raw Node.js streaming (bypass Fastify serialization)
 - **Inline styles**: Frontend uses no CSS framework — all components use inline `style={{}}` objects
 - **DB**: SQLite via better-sqlite3, WAL mode, foreign keys ON. File at `backend/data/nvr.db` (gitignored, Docker volume)
@@ -84,4 +88,5 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up   # Prod
 - Backend Docker image includes `ffmpeg` (required for .dav transcoding) and `python3 make g++` (for native module builds)
 - No test suite exists yet
 - No migration system — schema created via `CREATE TABLE IF NOT EXISTS` on startup
+- CI: auto-deploy to Dokploy on push to master (`.github/workflows/deploy.yml`)
 - Uses [PAUL](/.paul/) for project management (phases, roadmap)

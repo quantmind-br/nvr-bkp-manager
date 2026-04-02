@@ -18,13 +18,14 @@ backend/src/
 │   └── auth.ts       # JWT plugin + global onRequest hook + requireRole()
 ├── routes/
 │   ├── auth.ts       # POST /api/auth/login, GET /api/auth/me
-│   ├── files.ts      # GET /api/files, GET /api/download, DELETE /api/files, POST /api/upload
+│   ├── files.ts      # GET /api/files (filter: channel/date/size), GET /api/download, DELETE /api/files, POST /api/upload, POST /api/bulk-delete, POST /api/bulk-download
 │   ├── stream.ts     # GET /api/stream (video with FFmpeg transcoding)
 │   ├── audit.ts      # GET /api/audit (admin only)
 │   └── health.ts     # GET /api/health (public)
 └── services/
     ├── sftp.ts       # All SFTP operations (connect/list/read/delete/upload)
-    ├── stream.ts     # FFmpeg pipe: .dav→mp4, .mp4 passthrough
+    ├── stream.ts     # FFmpeg pipe: .dav→mp4, .mp4 passthrough, HLS session mgmt
+    ├── filenameParser.ts # NVR filename regex parser + duration formatter
     ├── users.ts      # User CRUD, bcrypt hashing
     └── audit.ts      # Audit log DB operations
 ```
@@ -38,6 +39,7 @@ backend/src/
 | Change SFTP config | `config.ts` (env vars) |
 | Add DB schema | `services/*.ts` init function + call from `seed.ts` |
 | Change video transcoding | `services/stream.ts` |
+| Parse NVR filenames | `services/filenameParser.ts` — `parseNvrFilename()`, `formatDuration()` |
 
 ## CONVENTIONS
 
@@ -49,6 +51,8 @@ backend/src/
 - Admin-only routes: `{ preHandler: [requireRole("admin")] }`
 - Error responses: `{ error: string, details?: string }` with appropriate HTTP status
 - All env defaults in `config.ts` via `process.env["KEY"] ?? "default"`
+- Bulk download uses `archiver` for streaming zip — also uses `reply.hijack()` + raw pipe
+- NVR filename regex: `CHANNEL_YYYY-MM-DD_HH-MM-SS_YYYY-MM-DD_HH-MM-SS.ext`
 
 ## ANTI-PATTERNS
 

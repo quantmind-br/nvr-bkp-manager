@@ -16,7 +16,7 @@ frontend/src/
 ├── api.ts             # Fetch wrapper — auto-attaches JWT, handles 401 → logout
 └── components/
     ├── LoginPage.tsx   # Login form
-    ├── FileList.tsx    # File browser table + directory navigation
+    ├── FileList.tsx    # File browser table + directory nav + date/channel filtering + bulk select/delete/download
     ├── VideoPlayer.tsx # Modal video player (uses <video> with ?token= auth)
     └── UploadButton.tsx # Multi-file upload with status feedback
 ```
@@ -45,3 +45,4 @@ frontend/src/
 - Vite dev server proxies `/api` → `http://localhost:3001` (see `vite.config.ts`)
 - Production: nginx serves static files + proxies `/api/` to backend container
 - No state management library — just React Context + useState
+- `FileList.tsx` is the largest component (800+ lines) — contains all file browsing, filtering, and bulk operation logic
