@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 
 interface UploadButtonProps {
+  currentPath: string;
   onUploadComplete: () => void;
 }
 
-export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
+export default function UploadButton({ currentPath, onUploadComplete }: UploadButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -15,7 +16,7 @@ export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
       const form = new FormData();
       form.append("file", file);
 
-      xhr.open("POST", "/api/upload");
+      xhr.open("POST", `/api/upload?path=${encodeURIComponent(currentPath)}`);
 
       const token = localStorage.getItem("token");
       if (token) {

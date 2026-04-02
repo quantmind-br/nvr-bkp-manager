@@ -32,6 +32,16 @@ interface FileFilters {
   maxSize?: number;
 }
 
+interface FileActionQuery {
+  file?: string;
+  path?: string;
+}
+
+interface BulkFileActionBody {
+  files: string[];
+  path?: string;
+}
+
 const ISO_DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 function validateFileName(name: string | undefined): string | null {
@@ -39,6 +49,32 @@ function validateFileName(name: string | undefined): string | null {
   if (name.includes("/") || name.includes("\\") || name.includes(".."))
     return null;
   return name;
+}
+
+export function validatePath(path: string | undefined): string | null {
+  if (path === undefined || path === "") {
+    return "/";
+  }
+
+  if (path.includes("\\") || path.includes("..")) {
+    return null;
+  }
+
+  const segments = path.split("/").filter(Boolean);
+
+  if (path !== "/" && !path.startsWith("/")) {
+    return null;
+  }
+
+  if (segments.some((segment) => segment === ".")) {
+    return null;
+  }
+
+  return segments.length === 0 ? "/" : `/${segments.join("/")}`;
+}
+
+export function buildRemotePath(path: string, fileName: string): string {
+  return path === "/" ? fileName : `${path}/${fileName}`;
 }
 
 function buildParsedMetadata(name: string): NonNullable<FileEntry["parsed"]> {
@@ -238,15 +274,26 @@ export async function fileRoutes(app: FastifyInstance) {
     },
   );
 
-  app.get<{ Querystring: { file?: string } }>(
+  app.get<{ Querystring: FileActionQuery }>(
     "/api/download-token",
     async (request, reply) => {
       const fileName = validateFileName(request.query.file);
+      const remotePath = validatePath(request.query.path);
       if (!fileName) {
         return reply
           .status(400)
           .send({ error: "Missing or invalid 'file' parameter" });
       }
+      if (!remotePath) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or invalid 'path' parameter" });
+      }
+
+      const downloadQuery = new URLSearchParams({
+        file: fileName,
+        downloadToken: "",
+      });
 
       const downloadToken = app.jwt.sign(
         {
@@ -255,29 +302,43 @@ export async function fileRoutes(app: FastifyInstance) {
           role: request.user.role,
           scope: "download",
           file: fileName,
+          path: request.query.path !== undefined ? remotePath : undefined,
         },
         { expiresIn: "30s" },
       );
 
-      const downloadUrl = `/api/download?file=${encodeURIComponent(fileName)}&downloadToken=${downloadToken}`;
+      downloadQuery.set("downloadToken", downloadToken);
+      if (request.query.path !== undefined) {
+        downloadQuery.set("path", remotePath);
+      }
+
+      const downloadUrl = `/api/download?${downloadQuery.toString()}`;
       return { downloadUrl, expiresInSeconds: 30 };
     },
   );
 
   // Download file
-  app.get<{ Querystring: { file?: string } }>(
+  app.get<{ Querystring: FileActionQuery }>(
     "/api/download",
     async (request, reply) => {
       const fileName = validateFileName(request.query.file);
+      const remotePath = validatePath(request.query.path);
       if (!fileName) {
         return reply
           .status(400)
           .send({ error: "Missing or invalid 'file' parameter" });
       }
+      if (!remotePath) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or invalid 'path' parameter" });
+      }
+
+      const remoteFilePath = buildRemotePath(remotePath, fileName);
 
       let size: number;
       try {
-        size = await getFileSize(fileName);
+        size = await getFileSize(remoteFilePath);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         return reply
@@ -287,7 +348,7 @@ export async function fileRoutes(app: FastifyInstance) {
 
       let sftpHandle;
       try {
-        sftpHandle = await getReadStream(fileName);
+        sftpHandle = await getReadStream(remoteFilePath);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         return reply
@@ -331,20 +392,28 @@ export async function fileRoutes(app: FastifyInstance) {
   );
 
   // Delete file (admin only)
-  app.delete<{ Querystring: { file?: string } }>(
+  app.delete<{ Querystring: FileActionQuery }>(
     "/api/files",
     { preHandler: [requireRole("admin")] },
     async (request, reply) => {
       const fileName = validateFileName(request.query.file);
+      const remotePath = validatePath(request.query.path);
       if (!fileName) {
         return reply
           .status(400)
           .send({ error: "Missing or invalid 'file' parameter" });
       }
+      if (!remotePath) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or invalid 'path' parameter" });
+      }
+
+      const remoteFilePath = buildRemotePath(remotePath, fileName);
 
       try {
-        await deleteFile(fileName);
-        logAction(request.user.sub, request.user.username, "delete", fileName, undefined, request.ip);
+        await deleteFile(remoteFilePath);
+        logAction(request.user.sub, request.user.username, "delete", remoteFilePath, undefined, request.ip);
         return { success: true, deleted: fileName };
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
@@ -356,52 +425,86 @@ export async function fileRoutes(app: FastifyInstance) {
   );
 
   // Upload file(s) (admin only)
-  app.post(
+  app.post<{ Querystring: { path?: string } }>(
     "/api/upload",
     { preHandler: [requireRole("admin")] },
     async (request, reply) => {
-    const parts = request.parts();
-    const uploaded: string[] = [];
+      const parts = request.parts();
+      const uploaded: string[] = [];
+      let remotePath = validatePath(request.query.path);
 
-    try {
-      for await (const part of parts) {
-        if (part.type === "file" && part.filename) {
-          const safeName = validateFileName(part.filename);
-          if (!safeName) {
-            return reply
-              .status(400)
-              .send({ error: `Invalid filename: ${part.filename}` });
+      if (!remotePath) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or invalid 'path' parameter" });
+      }
+
+      try {
+        for await (const part of parts) {
+          if (part.type === "field" && part.fieldname === "path" && request.query.path === undefined) {
+            const fieldPath = validatePath(typeof part.value === "string" ? part.value : undefined);
+            if (!fieldPath) {
+              return reply
+                .status(400)
+                .send({ error: "Missing or invalid 'path' parameter" });
+            }
+            remotePath = fieldPath;
+            continue;
           }
-          await uploadFile(safeName, part.file);
-          uploaded.push(safeName);
+
+          if (part.type === "file" && part.filename) {
+            const safeName = validateFileName(part.filename);
+            if (!safeName) {
+              return reply
+                .status(400)
+                .send({ error: `Invalid filename: ${part.filename}` });
+            }
+            const remoteFilePath = buildRemotePath(remotePath, safeName);
+            await uploadFile(remoteFilePath, part.file);
+            uploaded.push(safeName);
+          }
         }
-      }
 
-      if (uploaded.length === 0) {
-        return reply.status(400).send({ error: "No files provided" });
-      }
+        if (uploaded.length === 0) {
+          return reply.status(400).send({ error: "No files provided" });
+        }
 
-      logAction(request.user.sub, request.user.username, "upload", uploaded.join(", "), undefined, request.ip);
-      return { success: true, uploaded };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      return reply
-        .status(502)
-        .send({ error: "Upload failed", details: message });
-    }
-  },
+        const completedPath = remotePath;
+
+        logAction(
+          request.user.sub,
+          request.user.username,
+          "upload",
+          uploaded.map((name) => buildRemotePath(completedPath, name)).join(", "),
+          undefined,
+          request.ip,
+        );
+        return { success: true, uploaded };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return reply
+          .status(502)
+          .send({ error: "Upload failed", details: message });
+      }
+    },
   );
 
   // Bulk delete (admin only)
-  app.post<{ Body: { files: string[] } }>(
+  app.post<{ Body: BulkFileActionBody }>(
     "/api/bulk-delete",
     { preHandler: [requireRole("admin")] },
     async (request, reply) => {
       const fileList = request.body?.files;
+      const remotePath = validatePath(request.body?.path);
       if (!Array.isArray(fileList) || fileList.length === 0) {
         return reply
           .status(400)
           .send({ error: "Missing or empty 'files' array" });
+      }
+      if (!remotePath) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or invalid 'path' parameter" });
       }
 
       const results: { file: string; success: boolean; error?: string }[] = [];
@@ -412,9 +515,10 @@ export async function fileRoutes(app: FastifyInstance) {
           results.push({ file: raw, success: false, error: "Invalid filename" });
           continue;
         }
+        const remoteFilePath = buildRemotePath(remotePath, safe);
         try {
-          await deleteFile(safe);
-          logAction(request.user.sub, request.user.username, "delete", safe, undefined, request.ip);
+          await deleteFile(remoteFilePath);
+          logAction(request.user.sub, request.user.username, "delete", remoteFilePath, undefined, request.ip);
           results.push({ file: safe, success: true });
         } catch (err) {
           const message = err instanceof Error ? err.message : "Unknown error";
@@ -427,14 +531,20 @@ export async function fileRoutes(app: FastifyInstance) {
   );
 
   // Bulk download as zip
-  app.post<{ Body: { files: string[] } }>(
+  app.post<{ Body: BulkFileActionBody }>(
     "/api/bulk-download",
     async (request, reply) => {
       const fileList = request.body?.files;
+      const remotePath = validatePath(request.body?.path);
       if (!Array.isArray(fileList) || fileList.length === 0) {
         return reply
           .status(400)
           .send({ error: "Missing or empty 'files' array" });
+      }
+      if (!remotePath) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or invalid 'path' parameter" });
       }
 
       if (fileList.length > 50) {
@@ -471,7 +581,8 @@ export async function fileRoutes(app: FastifyInstance) {
 
       try {
         for (const fileName of fileList) {
-          const handle = await getReadStream(fileName);
+          const remoteFilePath = buildRemotePath(remotePath, fileName);
+          const handle = await getReadStream(remoteFilePath);
           sftpClients.push(handle.sftp);
           archive.append(handle.stream, { name: fileName });
 

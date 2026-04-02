@@ -8,13 +8,15 @@ import {
   removeSession,
 } from "../services/stream.js";
 import { logAction } from "../services/audit.js";
+import { buildRemotePath, validatePath } from "./files.js";
 
 export async function streamRoutes(app: FastifyInstance) {
   // Start an HLS transcoding session — returns sessionId + duration
-  app.get<{ Querystring: { file?: string; start?: string } }>(
+  app.get<{ Querystring: { file?: string; path?: string; start?: string } }>(
     "/api/stream/start",
     async (request, reply) => {
       const fileName = request.query.file;
+      const remotePath = validatePath(request.query.path);
       const startSeconds = parseInt(request.query.start ?? "0", 10) || 0;
 
       if (!fileName) {
@@ -30,6 +32,12 @@ export async function streamRoutes(app: FastifyInstance) {
       ) {
         return reply.status(400).send({ error: "Invalid file name" });
       }
+
+      if (!remotePath) {
+        return reply.status(400).send({ error: "Missing or invalid 'path' query parameter" });
+      }
+
+      const remoteFilePath = buildRemotePath(remotePath, fileName);
 
       // Parse duration from filename (no I/O needed)
       const durationMatch = fileName.match(
@@ -51,7 +59,7 @@ export async function streamRoutes(app: FastifyInstance) {
         request.user.sub,
         request.user.username,
         "stream",
-        fileName,
+        remoteFilePath,
         `session:${sessionId} start:${startSeconds}s`,
         request.ip,
       );
@@ -72,7 +80,7 @@ export async function streamRoutes(app: FastifyInstance) {
       });
 
       // Start transcoding in background (async, no await)
-      createHlsSession(fileName, startSeconds, sessionId)
+      createHlsSession(remoteFilePath, startSeconds, sessionId)
         .then((session) => {
           registerSession(session); // Replace placeholder with real session
           session.ready.catch(() => removeSession(sessionId));

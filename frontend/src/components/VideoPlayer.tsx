@@ -4,6 +4,7 @@ import { apiFetch } from "../api";
 
 interface VideoPlayerProps {
   fileName: string;
+  currentPath: string;
   onClose: () => void;
 }
 
@@ -15,7 +16,7 @@ function formatTime(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
+export default function VideoPlayer({ fileName, currentPath, onClose }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -30,8 +31,7 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
     hlsRef.current?.destroy();
     hlsRef.current = null;
     if (sessionIdRef.current) {
-      const token = localStorage.getItem("token") ?? "";
-      fetch(`/api/stream/${sessionIdRef.current}?token=${token}`, {
+      apiFetch(`/api/stream/${sessionIdRef.current}`, {
         method: "DELETE",
       }).catch(() => {});
       sessionIdRef.current = null;
@@ -48,7 +48,7 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
       try {
         const token = localStorage.getItem("token") ?? "";
         const res = await apiFetch(
-          `/api/stream/start?file=${encodeURIComponent(fileName)}&start=${seekTo}`,
+          `/api/stream/start?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(currentPath)}&start=${seekTo}`,
         );
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -119,7 +119,7 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
         );
       }
     },
-    [fileName, destroyCurrentSession],
+    [currentPath, fileName, destroyCurrentSession],
   );
 
   // Start initial stream

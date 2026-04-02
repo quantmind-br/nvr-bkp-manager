@@ -155,7 +155,7 @@ export default function FileList() {
     setDownloadingFile(fileName);
     try {
       const res = await apiFetch(
-        `/api/download-token?file=${encodeURIComponent(fileName)}`,
+        `/api/download-token?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(currentPath)}`,
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -182,7 +182,7 @@ export default function FileList() {
     setConfirmingDelete(null);
     try {
       const res = await apiFetch(
-        `/api/files?file=${encodeURIComponent(fileName)}`,
+        `/api/files?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(currentPath)}`,
         { method: "DELETE" },
       );
       if (!res.ok) {
@@ -333,7 +333,7 @@ export default function FileList() {
       const res = await apiFetch("/api/bulk-delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files: Array.from(selectedForBulk) }),
+        body: JSON.stringify({ files: Array.from(selectedForBulk), path: currentPath }),
       });
       const data = await res.json() as { results: { file: string; success: boolean; error?: string }[] };
       const failed = data.results.filter((r) => !r.success);
@@ -360,7 +360,7 @@ export default function FileList() {
       const res = await apiFetch("/api/bulk-download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files: Array.from(selectedForBulk) }),
+        body: JSON.stringify({ files: Array.from(selectedForBulk), path: currentPath }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -454,7 +454,7 @@ export default function FileList() {
           <span style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>
             {!loading && `${sortedFiles.filter((f) => f.name !== "..").length} items`}
           </span>
-          {isAdmin && <UploadButton onUploadComplete={() => fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB)} />}
+          {isAdmin && <UploadButton currentPath={currentPath} onUploadComplete={() => fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB)} />}
 
         </span>
       </div>
@@ -723,6 +723,7 @@ export default function FileList() {
       {selectedFile && (
         <VideoPlayer
           fileName={selectedFile}
+          currentPath={currentPath}
           onClose={() => setSelectedFile(null)}
         />
       )}

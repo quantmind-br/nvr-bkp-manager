@@ -11,6 +11,7 @@ declare module "@fastify/jwt" {
       role: "admin" | "viewer";
       scope?: string;
       file?: string;
+      path?: string;
     };
     user: {
       sub: number;
@@ -18,6 +19,7 @@ declare module "@fastify/jwt" {
       role: "admin" | "viewer";
       scope?: string;
       file?: string;
+      path?: string;
     };
   }
 }
@@ -73,12 +75,16 @@ async function authPlugin(app: FastifyInstance): Promise<void> {
             role: "admin" | "viewer";
             scope: string;
             file: string;
+            path?: string;
           }>(query["downloadToken"]);
           if (decoded.scope !== "download") {
             return reply.status(403).send({ error: "Invalid download token scope" });
           }
           if (decoded.file !== query["file"]) {
             return reply.status(403).send({ error: "File mismatch" });
+          }
+          if (decoded.path !== query["path"]) {
+            return reply.status(403).send({ error: "Path mismatch" });
           }
           request.user = decoded;
           return;
