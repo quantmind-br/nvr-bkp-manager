@@ -15,10 +15,12 @@
   "dependencies": {
     "@fastify/cors": "^11.2.0",
     "dotenv": "^17.4.0",
-    "fastify": "^5.8.4"
+    "fastify": "^5.8.4",
+    "ssh2-sftp-client": "^12.1.1"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "@types/ssh2-sftp-client": "^9.0.6",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"
   }
