@@ -31,10 +31,10 @@ async function authPlugin(app: FastifyInstance): Promise<void> {
         return;
       }
 
-      // Accept token as query param for stream/download (HTML5 video/a can't set headers)
+      // Accept token as query param for stream/download/HLS (HTML5 video/a can't set headers)
       const query = request.query as Record<string, string | undefined>;
       if (
-        (url === "/api/stream" || url === "/api/download") &&
+        (url.startsWith("/api/stream") || url === "/api/download") &&
         query["token"]
       ) {
         try {
