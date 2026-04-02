@@ -238,6 +238,32 @@ export async function fileRoutes(app: FastifyInstance) {
     },
   );
 
+  app.get<{ Querystring: { file?: string } }>(
+    "/api/download-token",
+    async (request, reply) => {
+      const fileName = validateFileName(request.query.file);
+      if (!fileName) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or invalid 'file' parameter" });
+      }
+
+      const downloadToken = app.jwt.sign(
+        {
+          sub: request.user.sub,
+          username: request.user.username,
+          role: request.user.role,
+          scope: "download",
+          file: fileName,
+        },
+        { expiresIn: "30s" },
+      );
+
+      const downloadUrl = `/api/download?file=${encodeURIComponent(fileName)}&downloadToken=${downloadToken}`;
+      return { downloadUrl, expiresInSeconds: 30 };
+    },
+  );
+
   // Download file
   app.get<{ Querystring: { file?: string } }>(
     "/api/download",

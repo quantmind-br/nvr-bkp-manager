@@ -66,6 +66,8 @@ export default function FileList() {
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
   const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set());
   const [dateFilter, setDateFilter] = useState("");
@@ -149,20 +151,35 @@ export default function FileList() {
     fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB);
   }, [currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB, fetchFiles]);
 
-  function handleDownload(fileName: string) {
-    const token = localStorage.getItem("token") ?? "";
-    const a = document.createElement("a");
-    a.href = `/api/download?file=${encodeURIComponent(fileName)}&token=${token}`;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  async function handleDownload(fileName: string) {
+    setDownloadingFile(fileName);
+    try {
+      const res = await apiFetch(
+        `/api/download-token?file=${encodeURIComponent(fileName)}`,
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          (body as { error?: string }).error ?? `HTTP ${res.status}`,
+        );
+      }
+      const data = (await res.json()) as { downloadUrl: string };
+      const a = document.createElement("a");
+      a.href = data.downloadUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setDownloadingFile(null);
+    }
   }
 
   async function handleDelete(fileName: string) {
-    if (!window.confirm(`Delete "${fileName}"? This cannot be undone.`)) return;
-
     setDeletingFile(fileName);
+    setConfirmingDelete(null);
     try {
       const res = await apiFetch(
         `/api/files?file=${encodeURIComponent(fileName)}`,
@@ -176,9 +193,7 @@ export default function FileList() {
       }
       fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB);
     } catch (err) {
-      alert(
-        `Delete failed: ${err instanceof Error ? err.message : "Unknown error"}`,
-      );
+      setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setDeletingFile(null);
     }
@@ -766,11 +781,12 @@ export default function FileList() {
                       cursor: file.isDirectory ? "pointer" : "default",
                     }}
                     onClick={() => file.isDirectory && navigateTo(file.name)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" &&
-                      file.isDirectory &&
-                      navigateTo(file.name)
-                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") setConfirmingDelete(null);
+                      if (e.key === "Enter" && file.isDirectory) {
+                        navigateTo(file.name);
+                      }
+                    }}
                     title={file.name}
                   >
                     <td style={{ padding: "0.5rem" }}>
@@ -842,22 +858,45 @@ export default function FileList() {
                             e.stopPropagation();
                             handleDownload(file.name);
                           }}
-                          style={actionBtn("#228B22")}
+                          disabled={downloadingFile === file.name}
+                          style={{
+                            ...actionBtn("var(--color-success)"),
+                            opacity: downloadingFile === file.name ? 0.6 : 1,
+                          }}
                         >
-                          Download
+                          {downloadingFile === file.name ? "Downloading..." : "Download"}
                         </button>
                       )}
                       {isAdmin && !file.isDirectory && file.name !== ".." && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(file.name);
-                          }}
-                          disabled={deletingFile === file.name}
-                          style={actionBtn("#cc0000")}
-                        >
-                          {deletingFile === file.name ? "..." : "Delete"}
-                        </button>
+                        confirmingDelete === file.name ? (
+                          <span style={{ display: "flex", gap: "4px", alignItems: "center", fontSize: "0.8rem" }}>
+                            <span style={{ color: "var(--color-danger)", fontWeight: 600, fontSize: "0.8rem" }}>Delete?</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDelete(file.name); }}
+                              disabled={deletingFile === file.name}
+                              style={{
+                                ...actionBtn("var(--color-danger)"),
+                                opacity: deletingFile === file.name ? 0.6 : 1,
+                              }}
+                            >
+                              {deletingFile === file.name ? "Deleting..." : "Yes"}
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setConfirmingDelete(null); }}
+                              style={actionBtn("var(--color-text-muted)")}
+                            >
+                              No
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmingDelete(file.name); }}
+                            disabled={deletingFile === file.name}
+                            style={actionBtn("var(--color-danger)")}
+                          >
+                            {deletingFile === file.name ? "..." : "Delete"}
+                          </button>
+                        )
                       )}
                     </td>
                   </tr>

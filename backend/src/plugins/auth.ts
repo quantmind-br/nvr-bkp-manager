@@ -5,8 +5,20 @@ import { config } from "../config.js";
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
-    payload: { sub: number; username: string; role: "admin" | "viewer" };
-    user: { sub: number; username: string; role: "admin" | "viewer" };
+    payload: {
+      sub: number;
+      username: string;
+      role: "admin" | "viewer";
+      scope?: string;
+      file?: string;
+    };
+    user: {
+      sub: number;
+      username: string;
+      role: "admin" | "viewer";
+      scope?: string;
+      file?: string;
+    };
   }
 }
 
@@ -47,6 +59,31 @@ async function authPlugin(app: FastifyInstance): Promise<void> {
           return;
         } catch {
           return reply.status(401).send({ error: "Unauthorized" });
+        }
+      }
+
+      if (
+        (url.startsWith("/api/stream") || url === "/api/download") &&
+        query["downloadToken"]
+      ) {
+        try {
+          const decoded = app.jwt.verify<{
+            sub: number;
+            username: string;
+            role: "admin" | "viewer";
+            scope: string;
+            file: string;
+          }>(query["downloadToken"]);
+          if (decoded.scope !== "download") {
+            return reply.status(403).send({ error: "Invalid download token scope" });
+          }
+          if (decoded.file !== query["file"]) {
+            return reply.status(403).send({ error: "File mismatch" });
+          }
+          request.user = decoded;
+          return;
+        } catch {
+          return reply.status(401).send({ error: "Invalid download token" });
         }
       }
 
