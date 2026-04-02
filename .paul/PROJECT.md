@@ -31,9 +31,10 @@ Centralizar, simplificar e democratizar o acesso ao gerenciamento de backups de 
 - Storage connection and file listing: SFTP service, REST API, file browser UI (Phase 2)
 - Video streaming: .dav remux via FFmpeg, .mp4 direct proxy, browser player (Phase 3)
 - File operations: download, upload, delete via web interface (Phase 4)
+- Authentication: JWT auth, role-based access, SQLite users, login page (Phase 5)
 
 ### Active (In Progress)
-- Authentication and security: JWT auth, user management, route protection (Phase 5)
+- Audit logging and production deploy via Dokploy (Phase 6)
 
 ### Planned (Next)
 - CRUD completo de arquivos (upload, download, delete)
