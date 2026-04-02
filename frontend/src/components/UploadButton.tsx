@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { apiFetch } from "../api";
 
 interface UploadButtonProps {
   onUploadComplete: () => void;
@@ -8,42 +7,93 @@ interface UploadButtonProps {
 export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
+  async function uploadFile(file: File): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const form = new FormData();
+      form.append("file", file);
+
+      xhr.open("POST", "/api/upload");
+
+      const token = localStorage.getItem("token");
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(pct);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 401) {
+          localStorage.removeItem("token");
+          window.location.reload();
+          return;
+        }
+
+        if (xhr.status >= 400) {
+          try {
+            const body = JSON.parse(xhr.responseText) as { error?: string };
+            reject(new Error(body.error ?? `HTTP ${xhr.status}`));
+          } catch {
+            reject(new Error(`HTTP ${xhr.status}`));
+          }
+          return;
+        }
+
+        setUploadProgress(100);
+        resolve();
+      };
+
+      xhr.onerror = () => reject(new Error("Network error"));
+      xhr.send(form);
+    });
+  }
 
   async function handleFiles(fileList: FileList) {
     const files = Array.from(fileList);
     if (files.length === 0) return;
 
-    setStatus(`Uploading ${files.length} file(s)...`);
+    for (let i = 0; i < files.length; i += 1) {
+      const file = files[i];
+      if (!file) continue;
 
-    try {
-      for (const file of files) {
-        setStatus(
-          `Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)...`,
-        );
-        const form = new FormData();
-        form.append("file", file);
-
-        const res = await apiFetch("/api/upload", { method: "POST", body: form });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ?? `HTTP ${res.status}`,
-          );
-        }
-      }
-
-      setStatus(`Uploaded ${files.length} file(s)`);
-      onUploadComplete();
-      setTimeout(() => setStatus(null), 3000);
-    } catch (err) {
       setStatus(
-        `Error: ${err instanceof Error ? err.message : "Upload failed"}`,
+        `Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)...`,
       );
-      setTimeout(() => setStatus(null), 5000);
+      setUploadProgress(0);
+
+      try {
+        await uploadFile(file);
+      } catch (err) {
+        setStatus(`Error: ${err instanceof Error ? err.message : "Upload failed"}`);
+        setUploadProgress(null);
+        setTimeout(() => {
+          setStatus(null);
+          setUploadProgress(null);
+        }, 5000);
+        if (inputRef.current) inputRef.current.value = "";
+        return;
+      }
     }
+
+    setStatus(`Uploaded ${files.length} file(s)`);
+    setUploadProgress(null);
+    onUploadComplete();
+    setTimeout(() => {
+      setStatus(null);
+      setUploadProgress(null);
+    }, 3000);
 
     if (inputRef.current) inputRef.current.value = "";
   }
+
+  const isError = status?.startsWith("Error:") ?? false;
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -69,11 +119,35 @@ export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
       >
         Upload
       </button>
+      {uploadProgress !== null && (
+        <div
+          style={{
+            width: "120px",
+            height: "6px",
+            background: "var(--color-border, #ddd)",
+            borderRadius: "var(--radius-sm, 3px)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${uploadProgress}%`,
+              height: "100%",
+              background: "var(--color-primary, #0066cc)",
+              transition: "width 0.2s",
+            }}
+          />
+        </div>
+      )}
       {status && (
         <span
+          aria-live={isError ? "assertive" : "polite"}
+          role={isError ? "alert" : undefined}
           style={{
             fontSize: "0.8rem",
-            color: status.startsWith("Error") ? "#c00" : "#666",
+            color: isError
+              ? "var(--color-danger, #c00)"
+              : "var(--color-text-muted, #666)",
           }}
         >
           {status}
