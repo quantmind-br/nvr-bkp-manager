@@ -56,14 +56,30 @@ export async function streamRoutes(app: FastifyInstance) {
         request.ip,
       );
 
+      // Pre-register a placeholder session so playlist polling finds it
+      const { mkdirSync } = await import("fs");
+      const { join } = await import("path");
+      const { tmpdir } = await import("os");
+      const hlsDir = join(tmpdir(), `nvr-hls-${sessionId}`);
+      mkdirSync(hlsDir, { recursive: true });
+      registerSession({
+        sessionId,
+        hlsDir,
+        startSeconds,
+        durationSeconds,
+        cleanup: () => {},
+        ready: Promise.resolve(),
+      });
+
       // Start transcoding in background (async, no await)
       createHlsSession(fileName, startSeconds, sessionId)
         .then((session) => {
-          registerSession(session);
+          registerSession(session); // Replace placeholder with real session
           session.ready.catch(() => removeSession(sessionId));
         })
         .catch((err) => {
           console.error("[Stream init error]", err instanceof Error ? err.message : err);
+          removeSession(sessionId);
         });
 
       return { sessionId, startSeconds, durationSeconds };
