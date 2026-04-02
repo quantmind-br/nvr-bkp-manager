@@ -29,7 +29,7 @@ export default function LoginPage() {
         alignItems: "center",
         minHeight: "100vh",
         fontFamily: "system-ui",
-        background: "#f5f5f5",
+        background: "var(--color-bg-subtle)",
       }}
     >
       <div
@@ -48,7 +48,14 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "1rem" }}>
+            <label
+              htmlFor="login-username"
+              style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.25rem", color: "var(--color-text)" }}
+            >
+              Username
+            </label>
             <input
+              id="login-username"
               type="text"
               placeholder="Username"
               value={username}
@@ -58,14 +65,21 @@ export default function LoginPage() {
                 width: "100%",
                 padding: "0.5rem",
                 fontSize: "0.9rem",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-md)",
                 boxSizing: "border-box",
               }}
             />
           </div>
           <div style={{ marginBottom: "1rem" }}>
+            <label
+              htmlFor="login-password"
+              style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.25rem", color: "var(--color-text)" }}
+            >
+              Password
+            </label>
             <input
+              id="login-password"
               type="password"
               placeholder="Password"
               value={password}
@@ -75,8 +89,8 @@ export default function LoginPage() {
                 width: "100%",
                 padding: "0.5rem",
                 fontSize: "0.9rem",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-md)",
                 boxSizing: "border-box",
               }}
             />
@@ -85,7 +99,7 @@ export default function LoginPage() {
           {error && (
             <p
               style={{
-                color: "#c00",
+                color: "var(--color-danger)",
                 fontSize: "0.85rem",
                 margin: "0 0 1rem",
                 textAlign: "center",
@@ -102,10 +116,10 @@ export default function LoginPage() {
               width: "100%",
               padding: "0.6rem",
               fontSize: "0.9rem",
-              background: "#0066cc",
+              background: "var(--color-primary)",
               color: "#fff",
               border: "none",
-              borderRadius: "4px",
+              borderRadius: "var(--radius-md)",
               cursor: submitting ? "wait" : "pointer",
               opacity: submitting ? 0.7 : 1,
             }}

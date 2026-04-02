@@ -10,12 +10,18 @@ export default function App() {
       <div
         style={{
           fontFamily: "system-ui",
-          padding: "2rem",
-          textAlign: "center",
-          color: "#666",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          color: "var(--color-text-muted)",
         }}
       >
-        Loading...
+        <h1 style={{ fontSize: "1.3rem", marginBottom: "1rem", color: "var(--color-text)" }}>
+          NVR Backup Manager
+        </h1>
+        <p>Loading...</p>
       </div>
     );
   }
@@ -38,7 +44,7 @@ export default function App() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom: "1px solid #ddd",
+          borderBottom: "1px solid var(--color-border)",
           paddingBottom: "0.75rem",
           marginBottom: "1rem",
         }}
@@ -47,19 +53,19 @@ export default function App() {
         <div
           style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}
         >
-          <span style={{ fontSize: "0.8rem", color: "#666" }}>
+          <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
             {user.username} ({user.role})
           </span>
           <button
             onClick={logout}
             style={{
               background: "none",
-              border: "1px solid #999",
-              borderRadius: "3px",
+              border: "1px solid var(--color-text-faint)",
+              borderRadius: "var(--radius-sm)",
               padding: "3px 10px",
               fontSize: "0.8rem",
               cursor: "pointer",
-              color: "#666",
+              color: "var(--color-text-muted)",
             }}
           >
             Logout
