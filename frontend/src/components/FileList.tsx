@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import VideoPlayer from "./VideoPlayer";
+import UploadButton from "./UploadButton";
 
 interface FileEntry {
   name: string;
@@ -31,6 +32,19 @@ function getExtension(name: string): string {
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
 }
 
+function actionBtn(color: string): React.CSSProperties {
+  return {
+    background: "none",
+    border: `1px solid ${color}`,
+    color,
+    borderRadius: "3px",
+    padding: "2px 8px",
+    cursor: "pointer",
+    fontSize: "0.8rem",
+    whiteSpace: "nowrap",
+  };
+}
+
 function isPlayable(name: string): boolean {
   const ext = getExtension(name);
   return ext === "dav" || ext === "mp4";
@@ -42,6 +56,7 @@ export default function FileList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [deletingFile, setDeletingFile] = useState<string | null>(null);
 
   const fetchFiles = useCallback(async (path: string) => {
     setLoading(true);
@@ -67,6 +82,40 @@ export default function FileList() {
   useEffect(() => {
     fetchFiles(currentPath);
   }, [currentPath, fetchFiles]);
+
+  function handleDownload(fileName: string) {
+    const a = document.createElement("a");
+    a.href = `/api/download?file=${encodeURIComponent(fileName)}`;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  async function handleDelete(fileName: string) {
+    if (!window.confirm(`Delete "${fileName}"? This cannot be undone.`)) return;
+
+    setDeletingFile(fileName);
+    try {
+      const res = await fetch(
+        `/api/files?file=${encodeURIComponent(fileName)}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          (body as { error?: string }).error ?? `HTTP ${res.status}`,
+        );
+      }
+      fetchFiles(currentPath);
+    } catch (err) {
+      alert(
+        `Delete failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
+    } finally {
+      setDeletingFile(null);
+    }
+  }
 
   function navigateTo(name: string) {
     if (name === "..") {
@@ -97,8 +146,11 @@ export default function FileList() {
       >
         <span style={{ fontWeight: 600 }}>Path:</span>
         <span>{currentPath}</span>
-        <span style={{ marginLeft: "auto", color: "#666", fontSize: "0.8rem" }}>
-          {!loading && `${files.filter((f) => f.name !== "..").length} items`}
+        <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "1rem" }}>
+          <span style={{ color: "#666", fontSize: "0.8rem" }}>
+            {!loading && `${files.filter((f) => f.name !== "..").length} items`}
+          </span>
+          <UploadButton onUploadComplete={() => fetchFiles(currentPath)} />
         </span>
       </div>
 
@@ -148,7 +200,7 @@ export default function FileList() {
               <th style={{ padding: "0.5rem", width: "100px" }}>Size</th>
               <th style={{ padding: "0.5rem", width: "180px" }}>Modified</th>
               <th style={{ padding: "0.5rem", width: "60px" }}>Type</th>
-              <th style={{ padding: "0.5rem", width: "60px" }}></th>
+              <th style={{ padding: "0.5rem", width: "180px" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -192,24 +244,39 @@ export default function FileList() {
                 >
                   {file.isDirectory ? "dir" : getExtension(file.name) || "-"}
                 </td>
-                <td style={{ padding: "0.5rem" }}>
+                <td style={{ padding: "0.5rem", display: "flex", gap: "4px" }}>
                   {!file.isDirectory && isPlayable(file.name) && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedFile(file.name);
                       }}
-                      style={{
-                        background: "none",
-                        border: "1px solid #0066cc",
-                        color: "#0066cc",
-                        borderRadius: "3px",
-                        padding: "2px 8px",
-                        cursor: "pointer",
-                        fontSize: "0.8rem",
-                      }}
+                      style={actionBtn("#0066cc")}
                     >
                       Play
+                    </button>
+                  )}
+                  {!file.isDirectory && file.name !== ".." && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload(file.name);
+                      }}
+                      style={actionBtn("#228B22")}
+                    >
+                      Download
+                    </button>
+                  )}
+                  {!file.isDirectory && file.name !== ".." && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(file.name);
+                      }}
+                      disabled={deletingFile === file.name}
+                      style={actionBtn("#cc0000")}
+                    >
+                      {deletingFile === file.name ? "..." : "Delete"}
                     </button>
                   )}
                 </td>

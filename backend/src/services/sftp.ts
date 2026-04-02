@@ -71,6 +71,58 @@ export async function getReadStream(remotePath: string): Promise<SftpStream> {
   return { stream, sftp };
 }
 
+export async function deleteFile(fileName: string): Promise<void> {
+  const sftp = new SftpClient();
+  try {
+    await sftp.connect({
+      host: config.storage.host,
+      port: config.storage.port,
+      username: config.storage.user,
+      password: config.storage.password,
+    });
+    const fullPath = normalizePath(config.storage.path, fileName);
+    await sftp.delete(fullPath);
+  } finally {
+    await sftp.end();
+  }
+}
+
+export async function uploadFile(
+  fileName: string,
+  dataStream: Readable,
+): Promise<void> {
+  const sftp = new SftpClient();
+  try {
+    await sftp.connect({
+      host: config.storage.host,
+      port: config.storage.port,
+      username: config.storage.user,
+      password: config.storage.password,
+    });
+    const fullPath = normalizePath(config.storage.path, fileName);
+    await sftp.put(dataStream, fullPath);
+  } finally {
+    await sftp.end();
+  }
+}
+
+export async function getFileSize(fileName: string): Promise<number> {
+  const sftp = new SftpClient();
+  try {
+    await sftp.connect({
+      host: config.storage.host,
+      port: config.storage.port,
+      username: config.storage.user,
+      password: config.storage.password,
+    });
+    const fullPath = normalizePath(config.storage.path, fileName);
+    const stats = await sftp.stat(fullPath);
+    return stats.size;
+  } finally {
+    await sftp.end();
+  }
+}
+
 function normalizePath(basePath: string, relativePath: string): string {
   // Prevent directory traversal outside base path
   const cleaned = relativePath.replace(/\.\./g, "").replace(/\/+/g, "/");
