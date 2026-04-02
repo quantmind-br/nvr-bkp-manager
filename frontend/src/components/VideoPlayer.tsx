@@ -67,6 +67,14 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
 
         const playlistUrl = `/api/stream/${data.sessionId}/stream.m3u8?token=${token}`;
 
+        // Poll until playlist is ready (FFmpeg may still be starting)
+        setStatus(seekTo > 0 ? `Transcoding from ${formatTime(seekTo)}...` : "Transcoding...");
+        for (let attempt = 0; attempt < 60; attempt++) {
+          const check = await fetch(playlistUrl);
+          if (check.ok) break;
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+
         if (!videoRef.current) return;
 
         if (Hls.isSupported()) {

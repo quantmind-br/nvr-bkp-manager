@@ -44,7 +44,11 @@ export async function streamRoutes(app: FastifyInstance) {
           request.ip,
         );
 
-        await session.ready;
+        // Don't await ready — return immediately, let frontend poll
+        // The ready promise continues in the background
+        session.ready.catch(() => {
+          removeSession(session.sessionId);
+        });
 
         return {
           sessionId: session.sessionId,
