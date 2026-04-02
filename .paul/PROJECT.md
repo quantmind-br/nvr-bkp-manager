@@ -28,9 +28,10 @@ Centralizar, simplificar e democratizar o acesso ao gerenciamento de backups de 
 
 ### Validated (Shipped)
 - Project scaffolding: monorepo, Docker Compose, dev environment (Phase 1)
+- Storage connection and file listing: SFTP service, REST API, file browser UI (Phase 2)
 
 ### Active (In Progress)
-- MVP: conexao ao Storage Box, listagem de arquivos e streaming de .dav no navegador
+- MVP: streaming de .dav no navegador (Phase 3 — core technical risk)
 
 ### Planned (Next)
 - CRUD completo de arquivos (upload, download, delete)
