@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import VideoPlayer from "./VideoPlayer";
 
 interface FileEntry {
   name: string;
@@ -30,11 +31,17 @@ function getExtension(name: string): string {
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
 }
 
+function isPlayable(name: string): boolean {
+  const ext = getExtension(name);
+  return ext === "dav" || ext === "mp4";
+}
+
 export default function FileList() {
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [currentPath, setCurrentPath] = useState("/");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   const fetchFiles = useCallback(async (path: string) => {
     setLoading(true);
@@ -115,6 +122,13 @@ export default function FileList() {
         </p>
       )}
 
+      {selectedFile && (
+        <VideoPlayer
+          fileName={selectedFile}
+          onClose={() => setSelectedFile(null)}
+        />
+      )}
+
       {!loading && !error && (
         <table
           style={{
@@ -134,6 +148,7 @@ export default function FileList() {
               <th style={{ padding: "0.5rem", width: "100px" }}>Size</th>
               <th style={{ padding: "0.5rem", width: "180px" }}>Modified</th>
               <th style={{ padding: "0.5rem", width: "60px" }}>Type</th>
+              <th style={{ padding: "0.5rem", width: "60px" }}></th>
             </tr>
           </thead>
           <tbody>
@@ -176,6 +191,27 @@ export default function FileList() {
                   }}
                 >
                   {file.isDirectory ? "dir" : getExtension(file.name) || "-"}
+                </td>
+                <td style={{ padding: "0.5rem" }}>
+                  {!file.isDirectory && isPlayable(file.name) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedFile(file.name);
+                      }}
+                      style={{
+                        background: "none",
+                        border: "1px solid #0066cc",
+                        color: "#0066cc",
+                        borderRadius: "3px",
+                        padding: "2px 8px",
+                        cursor: "pointer",
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      Play
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

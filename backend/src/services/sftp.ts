@@ -1,5 +1,11 @@
 import SftpClient from "ssh2-sftp-client";
+import type { Readable } from "stream";
 import { config } from "../config.js";
+
+export interface SftpStream {
+  stream: Readable;
+  sftp: SftpClient;
+}
 
 export interface FileEntry {
   name: string;
@@ -48,6 +54,21 @@ export async function testConnection(): Promise<boolean> {
   } finally {
     await sftp.end();
   }
+}
+
+export async function getReadStream(remotePath: string): Promise<SftpStream> {
+  const sftp = new SftpClient();
+  await sftp.connect({
+    host: config.storage.host,
+    port: config.storage.port,
+    username: config.storage.user,
+    password: config.storage.password,
+  });
+
+  const fullPath = normalizePath(config.storage.path, remotePath);
+  const stream = sftp.createReadStream(fullPath);
+
+  return { stream, sftp };
 }
 
 function normalizePath(basePath: string, relativePath: string): string {
