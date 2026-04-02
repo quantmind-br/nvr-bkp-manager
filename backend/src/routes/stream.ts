@@ -10,11 +10,12 @@ import {
 import { logAction } from "../services/audit.js";
 
 export async function streamRoutes(app: FastifyInstance) {
-  // Start an HLS transcoding session — returns sessionId
-  app.get<{ Querystring: { file?: string } }>(
+  // Start an HLS transcoding session — returns sessionId + duration
+  app.get<{ Querystring: { file?: string; start?: string } }>(
     "/api/stream/start",
     async (request, reply) => {
       const fileName = request.query.file;
+      const startSeconds = parseInt(request.query.start ?? "0", 10) || 0;
 
       if (!fileName) {
         return reply
@@ -31,7 +32,7 @@ export async function streamRoutes(app: FastifyInstance) {
       }
 
       try {
-        const session = await createHlsSession(fileName);
+        const session = await createHlsSession(fileName, startSeconds);
         registerSession(session);
 
         logAction(
@@ -39,14 +40,17 @@ export async function streamRoutes(app: FastifyInstance) {
           request.user.username,
           "stream",
           fileName,
-          `session:${session.sessionId}`,
+          `session:${session.sessionId} start:${startSeconds}s`,
           request.ip,
         );
 
-        // Wait for first segment before returning
         await session.ready;
 
-        return { sessionId: session.sessionId };
+        return {
+          sessionId: session.sessionId,
+          startSeconds: session.startSeconds,
+          durationSeconds: session.durationSeconds,
+        };
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         return reply
@@ -93,7 +97,6 @@ export async function streamRoutes(app: FastifyInstance) {
 
       const segmentPath = join(session.hlsDir, request.params.segment);
 
-      // Security: prevent path traversal
       if (!segmentPath.startsWith(session.hlsDir)) {
         return reply.status(400).send({ error: "Invalid segment" });
       }
