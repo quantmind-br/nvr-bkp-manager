@@ -408,7 +408,33 @@ export default function FileList() {
         }}
       >
         <span style={{ fontWeight: 600 }}>Path:</span>
-        <span>{currentPath}</span>
+        <span>
+          <span
+            onClick={() => setCurrentPath("/")}
+            style={{ cursor: "pointer", color: "var(--color-primary)" }}
+          >
+            /
+          </span>
+          {currentPath.split("/").filter(Boolean).map((seg, i, arr) => {
+            const path = "/" + arr.slice(0, i + 1).join("/");
+            const isLast = i === arr.length - 1;
+            return (
+              <span key={path}>
+                {isLast ? (
+                  <span style={{ fontWeight: 600 }}>{seg}</span>
+                ) : (
+                  <span
+                    onClick={() => setCurrentPath(path)}
+                    style={{ cursor: "pointer", color: "var(--color-primary)" }}
+                  >
+                    {seg}
+                  </span>
+                )}
+                {" / "}
+              </span>
+            );
+          })}
+        </span>
         <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "1rem" }}>
           <span style={{ color: "#666", fontSize: "0.8rem" }}>
             {!loading && `${sortedFiles.filter((f) => f.name !== "..").length} items`}
@@ -466,32 +492,37 @@ export default function FileList() {
         {/* Date filter group */}
         <div style={filterGroupStyle}>
           <span style={filterLabelStyle}>Date</span>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexWrap: "wrap" }}>
-            <input
-              id="dateFilter"
-              type="date"
-              value={dateFilter}
-              onChange={(e) => { setDateFilter(e.target.value); setStartDateFilter(""); setEndDateFilter(""); }}
-              style={filterInputStyle}
-            />
-            <span style={{ color: "#999", fontSize: "0.7rem" }}>or</span>
-            <input
-              id="startDateFilter"
-              type="date"
-              value={startDateFilter}
-              placeholder="From"
-              onChange={(e) => { setStartDateFilter(e.target.value); setDateFilter(""); }}
-              style={filterInputStyle}
-            />
-            <span style={{ color: "#999", fontSize: "0.7rem" }}>-</span>
-            <input
-              id="endDateFilter"
-              type="date"
-              value={endDateFilter}
-              placeholder="To"
-              onChange={(e) => { setEndDateFilter(e.target.value); setDateFilter(""); }}
-              style={filterInputStyle}
-            />
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+              <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", minWidth: "62px" }}>Single day</span>
+              <input
+                id="dateFilter"
+                type="date"
+                value={dateFilter}
+                onChange={(e) => { setDateFilter(e.target.value); setStartDateFilter(""); setEndDateFilter(""); }}
+                style={filterInputStyle}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+              <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", minWidth: "62px" }}>Date range</span>
+              <input
+                id="startDateFilter"
+                type="date"
+                value={startDateFilter}
+                placeholder="From"
+                onChange={(e) => { setStartDateFilter(e.target.value); setDateFilter(""); }}
+                style={filterInputStyle}
+              />
+              <span style={{ color: "var(--color-text-faint)", fontSize: "0.7rem" }}>-</span>
+              <input
+                id="endDateFilter"
+                type="date"
+                value={endDateFilter}
+                placeholder="To"
+                onChange={(e) => { setEndDateFilter(e.target.value); setDateFilter(""); }}
+                style={filterInputStyle}
+              />
+            </div>
           </div>
         </div>
 
