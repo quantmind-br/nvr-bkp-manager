@@ -4,7 +4,6 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { randomBytes } from "crypto";
 import { getReadStream, type SftpStream } from "./sftp.js";
-import { config } from "../config.js";
 
 export interface HlsSession {
   sessionId: string;
@@ -15,27 +14,7 @@ export interface HlsSession {
   ready: Promise<void>;
 }
 
-// Check if FFmpeg has native SFTP support (cached)
-let _hasSftpProtocol: boolean | null = null;
-async function hasSftpProtocol(): Promise<boolean> {
-  if (_hasSftpProtocol !== null) return _hasSftpProtocol;
-  return new Promise((resolve) => {
-    const proc = spawn("ffmpeg", ["-protocols"], { stdio: ["pipe", "pipe", "pipe"] });
-    let output = "";
-    proc.stdout.on("data", (d: Buffer) => { output += d.toString(); });
-    proc.stderr.on("data", (d: Buffer) => { output += d.toString(); });
-    proc.on("close", () => {
-      _hasSftpProtocol = output.includes("sftp");
-      resolve(_hasSftpProtocol);
-    });
-  });
-}
-
-function buildSftpUrl(fileName: string): string {
-  const { user, password, host, port, path } = config.storage;
-  const encodedPass = encodeURIComponent(password);
-  return `sftp://${user}:${encodedPass}@${host}:${port}${path}/${fileName}`;
-}
+// Always use pipe-based SFTP streaming (FFmpeg's native SFTP has auth issues with special chars in passwords)
 
 // Parse duration from .dav filename: ch0_YYYY-MM-DD_HH-MM-SS_YYYY-MM-DD_HH-MM-SS.dav
 function parseDurationFromFilename(fileName: string): number | null {
@@ -68,7 +47,6 @@ export async function createHlsSession(
 
   const playlistPath = join(hlsDir, "stream.m3u8");
   const durationSeconds = parseDurationFromFilename(fileName);
-  const useSftpUrl = await hasSftpProtocol();
 
   let sftpHandle: SftpStream | null = null;
   let ffmpegProcess: ChildProcess | null = null;
@@ -88,26 +66,13 @@ export async function createHlsSession(
     }, 30000);
   }
 
-  // Build FFmpeg args
+  // Use pipe-based SFTP streaming with -ss for seeking
   const seekArgs = startSeconds > 0 ? ["-ss", String(startSeconds)] : [];
-  let inputArgs: string[];
-  let needsPipe: boolean;
+  const inputArgs = ext === ".dav"
+    ? [...seekArgs, "-f", "hevc", "-i", "pipe:0"]
+    : [...seekArgs, "-i", "pipe:0"];
 
-  if (useSftpUrl) {
-    // Native SFTP: FFmpeg handles the connection and seeking
-    const sftpUrl = buildSftpUrl(fileName);
-    inputArgs = ext === ".dav"
-      ? [...seekArgs, "-f", "hevc", "-i", sftpUrl]
-      : [...seekArgs, "-i", sftpUrl];
-    needsPipe = false;
-  } else {
-    // Fallback: pipe via ssh2-sftp-client
-    inputArgs = ext === ".dav"
-      ? [...seekArgs, "-f", "hevc", "-i", "pipe:0"]
-      : [...seekArgs, "-i", "pipe:0"];
-    needsPipe = true;
-    sftpHandle = await getReadStream(fileName);
-  }
+  sftpHandle = await getReadStream(fileName);
 
   ffmpegProcess = spawn(
     "ffmpeg",
@@ -138,13 +103,11 @@ export async function createHlsSession(
     }
   });
 
-  if (needsPipe && sftpHandle) {
-    sftpHandle.stream.pipe(ffmpegProcess.stdin!);
-    sftpHandle.stream.on("error", (err) => {
-      console.error("[SFTP stream error]", err.message);
-      cleanup();
-    });
-  }
+  sftpHandle.stream.pipe(ffmpegProcess.stdin!);
+  sftpHandle.stream.on("error", (err) => {
+    console.error("[SFTP stream error]", err.message);
+    cleanup();
+  });
 
   ffmpegProcess.stdin?.on("error", () => { /* broken pipe */ });
   ffmpegProcess.on("close", () => { /* finished */ });
