@@ -12,6 +12,12 @@ export interface FileEntry {
   size: number;
   modifiedAt: string;
   isDirectory: boolean;
+  parsed?: {
+    channel: string | null;
+    startTime: string | null;
+    endTime: string | null;
+    duration: string | null;
+  };
 }
 
 export async function listFiles(remotePath = "/"): Promise<FileEntry[]> {

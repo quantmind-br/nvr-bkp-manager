@@ -9,6 +9,12 @@ interface FileEntry {
   size: number;
   modifiedAt: string;
   isDirectory: boolean;
+  parsed?: {
+    channel: string | null;
+    startTime: string | null;
+    endTime: string | null;
+    duration: string | null;
+  };
 }
 
 function formatSize(bytes: number): string {
@@ -61,11 +67,37 @@ export default function FileList() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
 
-  const fetchFiles = useCallback(async (path: string) => {
+  const [channelFilter, setChannelFilter] = useState("");
+  const [debouncedChannel, setDebouncedChannel] = useState("");
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
+
+  const [sortColumn, setSortColumn] = useState<"channel" | "start" | "end">("start");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedChannel(channelFilter), 300);
+    return () => clearTimeout(timer);
+  }, [channelFilter]);
+
+  useEffect(() => {
+    setChannelFilter("");
+    setDebouncedChannel("");
+    setStartDateFilter("");
+    setEndDateFilter("");
+  }, [currentPath]);
+
+  const fetchFiles = useCallback(async (path: string, channel: string, start: string, end: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch(`/api/files?path=${encodeURIComponent(path)}`);
+      const params = new URLSearchParams();
+      params.append("path", path);
+      if (channel) params.append("channel", channel);
+      if (start) params.append("startDate", start);
+      if (end) params.append("endDate", end);
+
+      const res = await apiFetch(`/api/files?${params.toString()}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
@@ -83,8 +115,8 @@ export default function FileList() {
   }, []);
 
   useEffect(() => {
-    fetchFiles(currentPath);
-  }, [currentPath, fetchFiles]);
+    fetchFiles(currentPath, debouncedChannel, startDateFilter, endDateFilter);
+  }, [currentPath, debouncedChannel, startDateFilter, endDateFilter, fetchFiles]);
 
   function handleDownload(fileName: string) {
     const token = localStorage.getItem("token") ?? "";
@@ -111,7 +143,7 @@ export default function FileList() {
           (body as { error?: string }).error ?? `HTTP ${res.status}`,
         );
       }
-      fetchFiles(currentPath);
+      fetchFiles(currentPath, debouncedChannel, startDateFilter, endDateFilter);
     } catch (err) {
       alert(
         `Delete failed: ${err instanceof Error ? err.message : "Unknown error"}`,
@@ -133,6 +165,40 @@ export default function FileList() {
     }
   }
 
+  const sortedFiles = [...files].sort((a, b) => {
+    if (a.name === "..") return -1;
+    if (b.name === "..") return 1;
+    if (a.isDirectory && !b.isDirectory) return -1;
+    if (!a.isDirectory && b.isDirectory) return 1;
+
+    let valA: any = "";
+    let valB: any = "";
+
+    if (sortColumn === "channel") {
+      valA = a.parsed?.channel || a.name;
+      valB = b.parsed?.channel || b.name;
+    } else if (sortColumn === "start") {
+      valA = a.parsed?.startTime || a.modifiedAt;
+      valB = b.parsed?.startTime || b.modifiedAt;
+    } else if (sortColumn === "end") {
+      valA = a.parsed?.endTime || a.modifiedAt;
+      valB = b.parsed?.endTime || b.modifiedAt;
+    }
+
+    if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+    if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (col: "channel" | "start" | "end") => {
+    if (sortColumn === col) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(col);
+      setSortDirection("desc");
+    }
+  };
+
   return (
     <div style={{ marginTop: "1rem" }}>
       <div
@@ -152,10 +218,80 @@ export default function FileList() {
         <span>{currentPath}</span>
         <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "1rem" }}>
           <span style={{ color: "#666", fontSize: "0.8rem" }}>
-            {!loading && `${files.filter((f) => f.name !== "..").length} items`}
+            {!loading && `${sortedFiles.filter((f) => f.name !== "..").length} items`}
           </span>
-          {isAdmin && <UploadButton onUploadComplete={() => fetchFiles(currentPath)} />}
+          {isAdmin && <UploadButton onUploadComplete={() => fetchFiles(currentPath, debouncedChannel, startDateFilter, endDateFilter)} />}
         </span>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "1rem",
+          marginBottom: "1rem",
+          padding: "0.75rem",
+          background: "#f0f0f0",
+          borderRadius: "4px",
+          fontSize: "0.9rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <label htmlFor="channelFilter" style={{ fontWeight: 600 }}>Channel:</label>
+          <input
+            id="channelFilter"
+            type="text"
+            placeholder="e.g. ch0"
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value)}
+            style={{ padding: "0.25rem 0.5rem", borderRadius: "3px", border: "1px solid #ccc" }}
+          />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <label htmlFor="startDateFilter" style={{ fontWeight: 600 }}>From:</label>
+          <input
+            id="startDateFilter"
+            type="date"
+            value={startDateFilter}
+            onChange={(e) => setStartDateFilter(e.target.value)}
+            style={{ padding: "0.25rem 0.5rem", borderRadius: "3px", border: "1px solid #ccc" }}
+          />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <label htmlFor="endDateFilter" style={{ fontWeight: 600 }}>To:</label>
+          <input
+            id="endDateFilter"
+            type="date"
+            value={endDateFilter}
+            onChange={(e) => setEndDateFilter(e.target.value)}
+            style={{ padding: "0.25rem 0.5rem", borderRadius: "3px", border: "1px solid #ccc" }}
+          />
+        </div>
+        {(channelFilter || startDateFilter || endDateFilter) && (
+          <button
+            onClick={() => {
+              setChannelFilter("");
+              setStartDateFilter("");
+              setEndDateFilter("");
+            }}
+            style={{
+              background: "none",
+              border: "1px solid #999",
+              borderRadius: "3px",
+              padding: "0.25rem 0.5rem",
+              cursor: "pointer",
+              fontSize: "0.8rem",
+            }}
+          >
+            Clear Filters
+          </button>
+        )}
+        {(channelFilter || startDateFilter || endDateFilter) && (
+          <span style={{ color: "#666", fontSize: "0.8rem", marginLeft: "auto" }}>
+            (filtered)
+          </span>
+        )}
       </div>
 
       {loading && (
@@ -200,7 +336,16 @@ export default function FileList() {
                 textAlign: "left",
               }}
             >
-              <th style={{ padding: "0.5rem" }}>Name</th>
+              <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => handleSort("channel")}>
+                Channel {sortColumn === "channel" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+              </th>
+              <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => handleSort("start")}>
+                Start {sortColumn === "start" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+              </th>
+              <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => handleSort("end")}>
+                End {sortColumn === "end" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+              </th>
+              <th style={{ padding: "0.5rem" }}>Duration</th>
               <th style={{ padding: "0.5rem", width: "100px" }}>Size</th>
               <th style={{ padding: "0.5rem", width: "180px" }}>Modified</th>
               <th style={{ padding: "0.5rem", width: "60px" }}>Type</th>
@@ -208,7 +353,7 @@ export default function FileList() {
             </tr>
           </thead>
           <tbody>
-            {files.map((file) => (
+            {sortedFiles.map((file) => (
               <tr
                 key={file.name}
                 style={{
@@ -221,17 +366,32 @@ export default function FileList() {
                   file.isDirectory &&
                   navigateTo(file.name)
                 }
+                title={file.name}
               >
-                <td
-                  style={{
-                    padding: "0.5rem",
-                    color: file.isDirectory ? "#0066cc" : "inherit",
-                    fontWeight: file.isDirectory ? 600 : 400,
-                  }}
-                >
-                  {file.isDirectory ? "[DIR] " : ""}
-                  {file.name}
-                </td>
+                {file.parsed?.channel != null ? (
+                  <>
+                    <td style={{ padding: "0.5rem" }}>
+                      <span style={{ background: "#0066cc", color: "white", padding: "2px 6px", borderRadius: "10px", fontSize: "0.8rem", fontWeight: "bold" }}>
+                        {file.parsed.channel?.toUpperCase() || "-"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "0.5rem" }}>{formatDate(file.parsed.startTime || "")}</td>
+                    <td style={{ padding: "0.5rem" }}>{formatDate(file.parsed.endTime || "")}</td>
+                    <td style={{ padding: "0.5rem" }}>{file.parsed.duration || "-"}</td>
+                  </>
+                ) : (
+                  <td
+                    colSpan={4}
+                    style={{
+                      padding: "0.5rem",
+                      color: file.isDirectory ? "#0066cc" : "inherit",
+                      fontWeight: file.isDirectory ? 600 : 400,
+                    }}
+                  >
+                    {file.isDirectory ? "[DIR] " : ""}
+                    {file.name}
+                  </td>
+                )}
                 <td style={{ padding: "0.5rem", color: "#666" }}>
                   {file.isDirectory ? "-" : formatSize(file.size)}
                 </td>
