@@ -1,0 +1,17 @@
+name: Deploy to Dokploy
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Dokploy Deploy
+        run: |
+          curl -s -X POST \
+            -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"composeId":"TvY07brJgNDx3LQDMqMCs"}' \
+            "${{ secrets.DOKPLOY_URL }}/api/compose.deploy"
