@@ -32,14 +32,14 @@ Centralizar, simplificar e democratizar o acesso ao gerenciamento de backups de 
 - Video streaming: .dav remux via FFmpeg, .mp4 direct proxy, browser player (Phase 3)
 - File operations: download, upload, delete via web interface (Phase 4)
 - Authentication: JWT auth, role-based access, SQLite users, login page (Phase 5)
+- Audit logging and production deploy via Dokploy (Phase 6)
+- Enhanced filtering: multi-channel chips, time-of-day range, file size range, grouped layout (Phase 7)
 
 ### Active (In Progress)
-- Audit logging and production deploy via Dokploy (Phase 6)
+- Selection and bulk operations: multi-select, bulk delete, bulk download (Phase 8)
 
 ### Planned (Next)
-- CRUD completo de arquivos (upload, download, delete)
-- Sistema de autenticacao e controle de acesso
-- Logs de auditoria para acoes criticas
+- To be defined after v0.2 milestone
 - Deploy plug-and-play via Docker Compose + Dokploy
 
 ### Out of Scope

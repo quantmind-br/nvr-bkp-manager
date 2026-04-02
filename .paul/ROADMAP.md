@@ -4,24 +4,61 @@
 
 Do conceito ao deploy: construir uma plataforma web que conecta a Storage Boxes remotas, lista gravacoes de seguranca e permite reproduzir arquivos .dav diretamente no navegador — evoluindo de um MVP focado em streaming para uma solucao completa com CRUD, autenticacao e deploy automatizado.
 
-## Current Milestone
+## Milestones
 
-**v0.1 Initial Release** (v0.1.0)
-Status: In progress
-Phases: 6 of 6 complete
+| Version | Name | Phases | Status | Completed |
+|---------|------|--------|--------|-----------|
+| v0.1 | Initial Release | 1-6 | ✅ Shipped | 2026-04-02 |
+| v0.2 | Filtering & Bulk Operations | 7-8 | 🚧 In Progress | - |
 
-## Phases
+## 🚧 Active Milestone: v0.2 Filtering & Bulk Operations
+
+**Goal:** Enable users to efficiently find and act on multiple files at once — select, delete, and download in bulk.
+**Status:** Phase 1 of 2
+**Progress:** [█████░░░░░] 50%
+
+### Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 | Project Foundation | 01-01 | Complete | 2026-04-02 |
-| 2 | Storage Connection & File Listing | 02-01 | Complete | 2026-04-02 |
-| 3 | Video Streaming (.dav Transcoding) | 03-01 | Complete | 2026-04-02 |
-| 4 | File Operations (CRUD) | 04-01 | Complete | 2026-04-02 |
-| 5 | Authentication & Security | 05-01 | Complete | 2026-04-02 |
-| 6 | Audit & Production Deploy | 06-01 | Complete | 2026-04-02 |
+| 7 | Enhanced Filtering | 07-01 | Complete | 2026-04-02 |
+| 8 | Selection & Bulk Operations | 08-01 | Planning | - |
 
-## Phase Details
+### Phase 7: Enhanced Filtering
+
+**Goal:** Upgrade filtering to support multi-channel select, time-of-day range, file size range, and improved filter UX with better visual grouping.
+**Depends on:** Phase 6 (production deploy complete)
+**Research:** Unlikely (internal UI patterns)
+
+**Scope:**
+- Multi-channel select (replace single dropdown)
+- Time-of-day range filter
+- File size range filter
+- Improved filter controls layout and visual grouping
+
+**Plans:**
+- [ ] 07-01: TBD (defined during /paul:plan)
+
+### Phase 8: Selection & Bulk Operations
+
+**Goal:** Add multi-select checkboxes, selection status bar, bulk delete with confirmation, and bulk download via server-side zip streaming.
+**Depends on:** Phase 7 (enhanced filtering makes bulk selection more useful)
+**Research:** Likely (server-side zip streaming, archiver library choice)
+**Research topics:** Streaming zip generation in Node.js without buffering entire archive in memory
+
+**Scope:**
+- Multi-select checkboxes (individual, select all visible, select all filtered)
+- Selection status bar ("X files selected (Y MB)")
+- Bulk delete with single confirmation, partial failure handling
+- Bulk download via server-side zip streaming with progress feedback
+
+**Plans:**
+- [ ] 08-01: TBD (defined during /paul:plan)
+
+## ✅ Completed Milestones
+
+<details>
+<summary>v0.1 Initial Release (Phases 1-6) — Shipped 2026-04-02</summary>
 
 ### Phase 1: Project Foundation
 Scaffolding, Docker Compose, dev environment. Finalize tech stack decisions (React vs Next.js, Node.js vs FastAPI, SQLite vs PostgreSQL). Establish project structure, linting, and basic CI.
@@ -41,6 +78,8 @@ JWT-based auth with login/logout. User management (admin/viewer roles). Bcrypt/A
 ### Phase 6: Audit & Production Deploy
 Activity logging (who did what, when). Docker Compose production configuration. Deploy via Dokploy to https://nvr.quantmind.com.br. Security hardening and LGPD compliance checks.
 
+</details>
+
 ---
 *Roadmap created: 2026-04-02*
-*Phases defined: 2026-04-02*
+*Last updated: 2026-04-02*

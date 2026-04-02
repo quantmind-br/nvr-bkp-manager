@@ -13,18 +13,23 @@ import {
   formatDuration,
   parseNvrFilename,
 } from "../services/filenameParser.js";
+import archiver from "archiver";
 
 interface FileListQuery {
   path?: string;
   channel?: string;
   startDate?: string;
   endDate?: string;
+  minSize?: string;
+  maxSize?: string;
 }
 
 interface FileFilters {
-  channel?: string;
+  channels?: string[];
   startDateTimestamp?: number;
   endDateExclusiveTimestamp?: number;
+  minSize?: number;
+  maxSize?: number;
 }
 
 const ISO_DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -103,14 +108,24 @@ function shouldIncludeFile(file: FileEntry, filters: FileFilters): boolean {
 
   const parsed = file.parsed ?? buildParsedMetadata(file.name);
 
-  if (filters.channel) {
+  // Channel filter (multi-channel: match ANY)
+  if (filters.channels && filters.channels.length > 0) {
     const parsedChannel = parsed.channel?.toLowerCase();
 
-    if (!parsedChannel || !parsedChannel.includes(filters.channel)) {
+    if (!parsedChannel || !filters.channels.some((ch) => parsedChannel.includes(ch))) {
       return false;
     }
   }
 
+  // Size filter
+  if (filters.minSize !== undefined && file.size < filters.minSize) {
+    return false;
+  }
+  if (filters.maxSize !== undefined && file.size > filters.maxSize) {
+    return false;
+  }
+
+  // Date filter
   const hasDateFilters =
     filters.startDateTimestamp !== undefined ||
     filters.endDateExclusiveTimestamp !== undefined;
@@ -120,13 +135,13 @@ function shouldIncludeFile(file: FileEntry, filters: FileFilters): boolean {
   }
 
   if (!parsed.startTime) {
-    return filters.channel === undefined;
+    return (filters.channels === undefined || filters.channels.length === 0);
   }
 
   const fileStartTimestamp = toTimestamp(parsed.startTime);
 
   if (fileStartTimestamp === null) {
-    return filters.channel === undefined;
+    return (filters.channels === undefined || filters.channels.length === 0);
   }
 
   if (
@@ -152,7 +167,27 @@ export async function fileRoutes(app: FastifyInstance) {
     "/api/files",
     async (request, reply) => {
       const remotePath = request.query.path ?? "/";
-      const channelFilter = request.query.channel?.trim().toLowerCase() || undefined;
+      const channelRaw = request.query.channel?.trim().toLowerCase();
+      const channels = channelRaw
+        ? channelRaw.split(",").map((c) => c.trim()).filter(Boolean)
+        : undefined;
+
+      const minSizeRaw = request.query.minSize;
+      const maxSizeRaw = request.query.maxSize;
+      const minSize = minSizeRaw ? Number.parseInt(minSizeRaw, 10) : undefined;
+      const maxSize = maxSizeRaw ? Number.parseInt(maxSizeRaw, 10) : undefined;
+
+      if (minSize !== undefined && (Number.isNaN(minSize) || minSize < 0)) {
+        return reply
+          .status(400)
+          .send({ error: "Invalid 'minSize' parameter" });
+      }
+      if (maxSize !== undefined && (Number.isNaN(maxSize) || maxSize < 0)) {
+        return reply
+          .status(400)
+          .send({ error: "Invalid 'maxSize' parameter" });
+      }
+
       const startDateTimestamp = parseDateFilter(request.query.startDate, "start");
 
       if (startDateTimestamp === null) {
@@ -187,9 +222,11 @@ export async function fileRoutes(app: FastifyInstance) {
 
         return files.filter((file) =>
           shouldIncludeFile(file, {
-            channel: channelFilter,
+            channels,
             startDateTimestamp,
             endDateExclusiveTimestamp,
+            minSize,
+            maxSize,
           }),
         );
       } catch (err) {
@@ -327,5 +364,112 @@ export async function fileRoutes(app: FastifyInstance) {
         .send({ error: "Upload failed", details: message });
     }
   },
+  );
+
+  // Bulk delete (admin only)
+  app.post<{ Body: { files: string[] } }>(
+    "/api/bulk-delete",
+    { preHandler: [requireRole("admin")] },
+    async (request, reply) => {
+      const fileList = request.body?.files;
+      if (!Array.isArray(fileList) || fileList.length === 0) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or empty 'files' array" });
+      }
+
+      const results: { file: string; success: boolean; error?: string }[] = [];
+
+      for (const raw of fileList) {
+        const safe = validateFileName(raw);
+        if (!safe) {
+          results.push({ file: raw, success: false, error: "Invalid filename" });
+          continue;
+        }
+        try {
+          await deleteFile(safe);
+          logAction(request.user.sub, request.user.username, "delete", safe, undefined, request.ip);
+          results.push({ file: safe, success: true });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          results.push({ file: safe, success: false, error: message });
+        }
+      }
+
+      return { results };
+    },
+  );
+
+  // Bulk download as zip
+  app.post<{ Body: { files: string[] } }>(
+    "/api/bulk-download",
+    async (request, reply) => {
+      const fileList = request.body?.files;
+      if (!Array.isArray(fileList) || fileList.length === 0) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or empty 'files' array" });
+      }
+
+      if (fileList.length > 50) {
+        return reply
+          .status(400)
+          .send({ error: "Maximum 50 files per bulk download" });
+      }
+
+      for (const raw of fileList) {
+        if (!validateFileName(raw)) {
+          return reply
+            .status(400)
+            .send({ error: `Invalid filename: ${raw}` });
+        }
+      }
+
+      const raw = reply.raw;
+      raw.writeHead(200, {
+        "Content-Type": "application/zip",
+        "Content-Disposition": 'attachment; filename="nvr-recordings.zip"',
+        "Transfer-Encoding": "chunked",
+      });
+
+      const archive = archiver("zip", { zlib: { level: 1 } });
+      const sftpClients: Array<{ end: () => Promise<unknown> }> = [];
+
+      archive.on("error", (err) => {
+        console.error("[Bulk download] Archive error:", err.message);
+        for (const sftp of sftpClients) sftp.end().catch(() => {});
+        if (!raw.writableEnded) raw.end();
+      });
+
+      archive.pipe(raw);
+
+      try {
+        for (const fileName of fileList) {
+          const handle = await getReadStream(fileName);
+          sftpClients.push(handle.sftp);
+          archive.append(handle.stream, { name: fileName });
+
+          handle.stream.on("error", () => {
+            handle.sftp.end().catch(() => {});
+          });
+          handle.stream.on("end", () => {
+            handle.sftp.end().catch(() => {});
+          });
+        }
+
+        await archive.finalize();
+      } catch (err) {
+        console.error("[Bulk download] Error:", err instanceof Error ? err.message : err);
+        for (const sftp of sftpClients) sftp.end().catch(() => {});
+        if (!raw.writableEnded) raw.end();
+      }
+
+      request.raw.on("close", () => {
+        archive.abort();
+        for (const sftp of sftpClients) sftp.end().catch(() => {});
+      });
+
+      return reply.hijack();
+    },
   );
 }

@@ -1,15 +1,15 @@
 {
   "name": "nvr-bkp-manager",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "milestone": {
-    "name": "v0.1 Initial Release",
-    "version": "0.1.0",
-    "status": "complete"
+    "name": "v0.2 Filtering & Bulk Operations",
+    "version": "0.2.0",
+    "status": "in_progress"
   },
   "phase": {
-    "number": 6,
-    "name": "Audit & Production Deploy",
-    "status": "complete"
+    "number": 8,
+    "name": "Selection & Bulk Operations",
+    "status": "not_started"
   },
   "loop": {
     "plan": null,
@@ -17,7 +17,7 @@
   },
   "timestamps": {
     "created_at": "2026-04-02T00:00:00Z",
-    "updated_at": "2026-04-02T13:16:00Z"
+    "updated_at": "2026-04-02T14:30:00Z"
   },
   "satellite": {
     "groom": true
