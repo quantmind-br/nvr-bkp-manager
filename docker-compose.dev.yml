@@ -1,0 +1,29 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      target: build
+    command: npx vite --host 0.0.0.0
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      backend:
+        condition: service_started
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    command: npx tsx watch src/index.ts
+    env_file: .env
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
