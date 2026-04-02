@@ -45,7 +45,7 @@ function actionBtn(color: string): React.CSSProperties {
     background: "none",
     border: `1px solid ${color}`,
     color,
-    borderRadius: "3px",
+    borderRadius: "var(--radius-sm)",
     padding: "2px 8px",
     cursor: "pointer",
     fontSize: "0.8rem",
@@ -387,23 +387,23 @@ export default function FileList() {
     flexDirection: "column",
     gap: "0.35rem",
     padding: "0.5rem",
-    border: "1px solid #ddd",
+    border: "1px solid var(--color-border)",
     borderRadius: "6px",
-    background: "#f8f8f8",
+    background: "var(--color-bg-panel)",
   };
 
   const filterLabelStyle: React.CSSProperties = {
     fontWeight: 600,
     fontSize: "0.7rem",
-    color: "#666",
+    color: "var(--color-text-muted)",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
   };
 
   const filterInputStyle: React.CSSProperties = {
     padding: "0.2rem 0.4rem",
-    borderRadius: "3px",
-    border: "1px solid #ccc",
+    borderRadius: "var(--radius-sm)",
+    border: "1px solid var(--color-border)",
     fontSize: "0.8rem",
   };
 
@@ -416,8 +416,8 @@ export default function FileList() {
           gap: "0.5rem",
           marginBottom: "0.75rem",
           padding: "0.5rem 0.75rem",
-          background: "#f0f0f0",
-          borderRadius: "4px",
+          background: "var(--color-bg-subtle)",
+          borderRadius: "var(--radius-md)",
           fontFamily: "monospace",
           fontSize: "0.9rem",
         }}
@@ -451,7 +451,7 @@ export default function FileList() {
           })}
         </span>
         <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "1rem" }}>
-          <span style={{ color: "#666", fontSize: "0.8rem" }}>
+          <span style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>
             {!loading && `${sortedFiles.filter((f) => f.name !== "..").length} items`}
           </span>
           {isAdmin && <UploadButton onUploadComplete={() => fetchFiles(currentPath, dateFilter, startDateFilter, endDateFilter, selectedChannels, minSizeMB, maxSizeMB)} />}
@@ -473,7 +473,7 @@ export default function FileList() {
           <span style={filterLabelStyle}>Channel</span>
           <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
             {availableChannels.length === 0 ? (
-              <span style={{ color: "#999", fontSize: "0.8rem" }}>-</span>
+               <span style={{ color: "var(--color-text-faint)", fontSize: "0.8rem" }}>-</span>
             ) : (
               availableChannels.map((ch) => {
                 const active = selectedChannels.has(ch);
@@ -488,8 +488,8 @@ export default function FileList() {
                     style={{
                       padding: "2px 8px",
                       borderRadius: "10px",
-                      border: active ? "1px solid #0066cc" : "1px solid #ccc",
-                      background: active ? "#0066cc" : "#fff",
+                      border: active ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
+                      background: active ? "var(--color-primary)" : "#fff",
                       color: active ? "#fff" : "#333",
                       cursor: "pointer",
                       fontSize: "0.75rem",
@@ -551,7 +551,7 @@ export default function FileList() {
               onChange={(e) => setTimeFrom(e.target.value)}
               style={{ ...filterInputStyle, width: "90px" }}
             />
-            <span style={{ color: "#999", fontSize: "0.7rem" }}>-</span>
+             <span style={{ color: "var(--color-text-faint)", fontSize: "0.7rem" }}>-</span>
             <input
               type="time"
               value={timeTo}
@@ -574,7 +574,7 @@ export default function FileList() {
               onChange={(e) => setMinSizeMB(e.target.value)}
               style={{ ...filterInputStyle, width: "70px" }}
             />
-            <span style={{ color: "#999", fontSize: "0.7rem" }}>-</span>
+             <span style={{ color: "var(--color-text-faint)", fontSize: "0.7rem" }}>-</span>
             <input
               type="number"
               min="0"
@@ -603,8 +603,8 @@ export default function FileList() {
               }}
               style={{
                 background: "none",
-                border: "1px solid #999",
-                borderRadius: "3px",
+                border: "1px solid var(--color-text-faint)",
+                borderRadius: "var(--radius-sm)",
                 padding: "0.25rem 0.5rem",
                 cursor: "pointer",
                 fontSize: "0.8rem",
@@ -612,7 +612,7 @@ export default function FileList() {
             >
               Clear Filters
             </button>
-            <span style={{ color: "#666", fontSize: "0.8rem" }}>(filtered)</span>
+             <span style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>(filtered)</span>
           </div>
         )}
       </div>
@@ -627,20 +627,20 @@ export default function FileList() {
             padding: "0.5rem 0.75rem",
             background: "#e8f0fe",
             border: "1px solid #b3d4fc",
-            borderRadius: "4px",
+            borderRadius: "var(--radius-md)",
             fontSize: "0.85rem",
             flexWrap: "wrap",
           }}
         >
           <span style={{ fontWeight: 600 }}>
             {selectedForBulk.size} file{selectedForBulk.size !== 1 ? "s" : ""} selected
-            <span style={{ fontWeight: 400, color: "#666", marginLeft: "0.25rem" }}>
+            <span style={{ fontWeight: 400, color: "var(--color-text-muted)", marginLeft: "0.25rem" }}>
               ({formatSize(selectedTotalSize)})
             </span>
           </span>
           <button
             onClick={() => setSelectedForBulk(new Set())}
-            style={{ ...actionBtn("#666"), fontSize: "0.75rem" }}
+            style={{ ...actionBtn("var(--color-text-muted)"), fontSize: "0.75rem" }}
           >
             Clear selection
           </button>
@@ -649,7 +649,7 @@ export default function FileList() {
               onClick={() => handleBulkDownload()}
               disabled={bulkDownloading}
               style={{
-                ...actionBtn("#228B22"),
+                ...actionBtn("var(--color-success)"),
                 opacity: bulkDownloading ? 0.6 : 1,
                 cursor: bulkDownloading ? "wait" : "pointer",
               }}
@@ -659,21 +659,21 @@ export default function FileList() {
             {isAdmin && !confirmBulkDelete && (
               <button
                 onClick={() => setConfirmBulkDelete(true)}
-                style={actionBtn("#cc0000")}
+                style={actionBtn("var(--color-danger)")}
               >
                 Delete Selected
               </button>
             )}
             {isAdmin && confirmBulkDelete && (
               <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                <span style={{ color: "#cc0000", fontWeight: 600, fontSize: "0.8rem" }}>
+                <span style={{ color: "var(--color-danger)", fontWeight: 600, fontSize: "0.8rem" }}>
                   Delete {selectedForBulk.size} files?
                 </span>
                 <button
                   onClick={() => handleBulkDelete()}
                   disabled={bulkDeleting}
                   style={{
-                    ...actionBtn("#cc0000"),
+                    ...actionBtn("var(--color-danger)"),
                     opacity: bulkDeleting ? 0.6 : 1,
                     cursor: bulkDeleting ? "wait" : "pointer",
                   }}
@@ -682,7 +682,7 @@ export default function FileList() {
                 </button>
                 <button
                   onClick={() => setConfirmBulkDelete(false)}
-                  style={actionBtn("#666")}
+                  style={actionBtn("var(--color-text-muted)")}
                 >
                   No
                 </button>
@@ -693,13 +693,13 @@ export default function FileList() {
       )}
 
       {bulkDeleteResult && (
-        <p role="alert" aria-live="assertive" style={{ color: "#c00", padding: "0.5rem 0.75rem", background: "#fff0f0", borderRadius: "4px", border: "1px solid #fcc", marginBottom: "0.75rem", fontSize: "0.85rem" }}>
+        <p role="alert" aria-live="assertive" style={{ color: "var(--color-danger)", padding: "0.5rem 0.75rem", background: "#FFF0F0", borderRadius: "var(--radius-md)", border: "1px solid #FCC", marginBottom: "0.75rem", fontSize: "0.85rem" }}>
           {bulkDeleteResult}
         </p>
       )}
 
       {loading && (
-        <p aria-live="polite" style={{ color: "#666", padding: "2rem", textAlign: "center" }}>
+        <p aria-live="polite" style={{ color: "var(--color-text-muted)", padding: "2rem", textAlign: "center" }}>
           Loading files...
         </p>
       )}
@@ -709,11 +709,11 @@ export default function FileList() {
           role="alert"
           aria-live="assertive"
           style={{
-            color: "#c00",
+            color: "var(--color-danger)",
             padding: "1rem",
-            background: "#fff0f0",
-            borderRadius: "4px",
-            border: "1px solid #fcc",
+            background: "#FFF0F0",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid #FCC",
           }}
         >
           Error: {error}
@@ -741,7 +741,7 @@ export default function FileList() {
               <thead>
                 <tr
                   style={{
-                    borderBottom: "2px solid #ddd",
+                    borderBottom: "2px solid var(--color-border)",
                     textAlign: "left",
                   }}
                 >
@@ -803,7 +803,7 @@ export default function FileList() {
                     {file.parsed?.channel != null ? (
                       <>
                         <td style={{ padding: "0.5rem" }}>
-                          <span style={{ background: "#0066cc", color: "white", padding: "2px 6px", borderRadius: "10px", fontSize: "0.8rem", fontWeight: "bold" }}>
+                          <span style={{ background: "var(--color-primary)", color: "white", padding: "2px 6px", borderRadius: "10px", fontSize: "0.8rem", fontWeight: "bold" }}>
                             {file.parsed.channel?.toUpperCase() || "-"}
                           </span>
                         </td>
@@ -816,7 +816,7 @@ export default function FileList() {
                         colSpan={4}
                         style={{
                           padding: "0.5rem",
-                          color: file.isDirectory ? "#0066cc" : "inherit",
+                          color: file.isDirectory ? "var(--color-primary)" : "inherit",
                           fontWeight: file.isDirectory ? 600 : 400,
                         }}
                       >
@@ -824,16 +824,16 @@ export default function FileList() {
                         {file.name}
                       </td>
                     )}
-                    <td style={{ padding: "0.5rem", color: "#666" }}>
+                    <td style={{ padding: "0.5rem", color: "var(--color-text-muted)" }}>
                       {file.isDirectory ? "-" : formatSize(file.size)}
                     </td>
-                    <td style={{ padding: "0.5rem", color: "#666" }}>
+                    <td style={{ padding: "0.5rem", color: "var(--color-text-muted)" }}>
                       {formatDate(file.modifiedAt)}
                     </td>
                     <td
                       style={{
                         padding: "0.5rem",
-                        color: "#999",
+                        color: "var(--color-text-faint)",
                         textTransform: "uppercase",
                         fontSize: "0.8rem",
                       }}
@@ -847,7 +847,7 @@ export default function FileList() {
                             e.stopPropagation();
                             setSelectedFile(file.name);
                           }}
-                          style={actionBtn("#0066cc")}
+                          style={actionBtn("var(--color-primary)")}
                         >
                           Play
                         </button>

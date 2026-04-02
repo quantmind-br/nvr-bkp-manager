@@ -107,10 +107,10 @@ export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
       <button
         onClick={() => inputRef.current?.click()}
         style={{
-          background: "#0066cc",
+          background: "var(--color-primary)",
           color: "#fff",
           border: "none",
-          borderRadius: "4px",
+          borderRadius: "var(--radius-md)",
           padding: "4px 12px",
           cursor: "pointer",
           fontSize: "0.8rem",
@@ -124,8 +124,8 @@ export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
           style={{
             width: "120px",
             height: "6px",
-            background: "var(--color-border, #ddd)",
-            borderRadius: "var(--radius-sm, 3px)",
+            background: "var(--color-border)",
+            borderRadius: "var(--radius-sm)",
             overflow: "hidden",
           }}
         >
@@ -133,7 +133,7 @@ export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
             style={{
               width: `${uploadProgress}%`,
               height: "100%",
-              background: "var(--color-primary, #0066cc)",
+              background: "var(--color-primary)",
               transition: "width 0.2s",
             }}
           />
@@ -146,8 +146,8 @@ export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
           style={{
             fontSize: "0.8rem",
             color: isError
-              ? "var(--color-danger, #c00)"
-              : "var(--color-text-muted, #666)",
+              ? "var(--color-danger)"
+              : "var(--color-text-muted)",
           }}
         >
           {status}

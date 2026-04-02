@@ -239,7 +239,7 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
           maxWidth: "90vw",
           maxHeight: "75vh",
           background: "#000",
-          borderRadius: "4px",
+          borderRadius: "var(--radius-md)",
           display: error ? "none" : "block",
         }}
       />
@@ -257,7 +257,7 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
             }}
           >
             <span>{formatTime(currentTime)}</span>
-            <span style={{ color: "#666" }}>
+            <span style={{ color: "var(--color-text-muted)" }}>
               Click to jump to any point in the recording
             </span>
             <span>{formatTime(durationSeconds)}</span>
@@ -293,7 +293,7 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
               width: "100%",
               height: "24px",
               background: "#333",
-              borderRadius: "4px",
+              borderRadius: "var(--radius-md)",
               cursor: "pointer",
               position: "relative",
               overflow: "hidden",
@@ -307,7 +307,7 @@ export default function VideoPlayer({ fileName, onClose }: VideoPlayerProps) {
                 top: 0,
                 height: "100%",
                 width: `${(currentTime / durationSeconds) * 100}%`,
-                background: "#0066cc",
+                background: "var(--color-primary)",
                 borderRadius: "4px 0 0 4px",
                 transition: "width 0.3s",
               }}
