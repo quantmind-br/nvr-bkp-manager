@@ -5,4 +5,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     globals: true,
   },
+  resolve: {
+    extensions: [".ts", ".js"],
+  },
 });

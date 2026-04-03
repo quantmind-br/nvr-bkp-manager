@@ -376,6 +376,10 @@ export default function FileList() {
   }
 
   async function handleBulkDownload() {
+    if (selectedForBulk.size > 100) {
+      setError("Cannot bulk download more than 100 files at once");
+      return;
+    }
     setBulkDownloading(true);
     try {
       const res = await apiFetch("/api/bulk-download-token", {
