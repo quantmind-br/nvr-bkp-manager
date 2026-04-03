@@ -78,10 +78,6 @@ export function getSettingsRow(): StoredSettings | undefined {
     | undefined;
 }
 
-export function getStoredPassword(): string {
-  return getSettingsRow()?.sftp_password ?? "";
-}
-
 export function getPublicSettings(): PublicSettings {
   const row = getExistingSettingsRow();
   const hasPassword = row.sftp_password.length > 0;
@@ -122,6 +118,30 @@ export function getSftpSettingsOrThrow(): SftpSettings {
   };
 }
 
+export function buildCandidateSettings(
+  input: UpdateSettingsInput & {
+    host: string;
+    port: number;
+    user: string;
+    path: string;
+  },
+): SftpSettings | null {
+  const effectivePassword =
+    input.password && input.password.length > 0
+      ? input.password
+      : (getSettingsRow()?.sftp_password ?? "");
+
+  if (!effectivePassword) return null;
+
+  return {
+    host: input.host,
+    port: input.port,
+    user: input.user,
+    password: effectivePassword,
+    path: input.path,
+  };
+}
+
 export function saveSettings(
   input: UpdateSettingsInput & {
     host: string;
@@ -130,34 +150,22 @@ export function saveSettings(
     path: string;
   },
 ): void {
-  ensureSettingsRow();
-
-  if (input.password && input.password.length > 0) {
-    db.prepare(
-      `
-        UPDATE settings
-        SET sftp_host = ?,
-            sftp_port = ?,
-            sftp_user = ?,
-            sftp_password = ?,
-            sftp_path = ?,
-            updated_at = datetime('now')
-        WHERE id = 1
-      `,
-    ).run(input.host, input.port, input.user, input.password, input.path);
-
-    return;
-  }
+  const effectivePassword =
+    input.password && input.password.length > 0
+      ? input.password
+      : (getSettingsRow()?.sftp_password ?? "");
 
   db.prepare(
     `
-      UPDATE settings
-      SET sftp_host = ?,
-          sftp_port = ?,
-          sftp_user = ?,
-          sftp_path = ?,
-          updated_at = datetime('now')
-      WHERE id = 1
+      INSERT INTO settings (id, sftp_host, sftp_port, sftp_user, sftp_password, sftp_path, updated_at)
+      VALUES (1, ?, ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(id) DO UPDATE SET
+        sftp_host = excluded.sftp_host,
+        sftp_port = excluded.sftp_port,
+        sftp_user = excluded.sftp_user,
+        sftp_password = excluded.sftp_password,
+        sftp_path = excluded.sftp_path,
+        updated_at = excluded.updated_at
     `,
-  ).run(input.host, input.port, input.user, input.path);
+  ).run(input.host, input.port, input.user, effectivePassword, input.path);
 }

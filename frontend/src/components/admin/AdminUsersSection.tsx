@@ -216,6 +216,12 @@ export default function AdminUsersSection() {
     }
   }
 
+  const adminCount = users.filter((u) => u.role === "admin").length;
+
+  function isLastAdmin(u: SafeUser): boolean {
+    return u.role === "admin" && adminCount <= 1;
+  }
+
   return (
     <div style={cardStyle}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
@@ -433,18 +439,33 @@ export default function AdminUsersSection() {
                           </span>
                         ) : (
                           <>
-                            <button onClick={() => openEditForm(u)} style={actionBtn("var(--color-primary)")}>
+                            <button
+                              onClick={() => openEditForm(u)}
+                              disabled={isLastAdmin(u)}
+                              style={{
+                                ...actionBtn("var(--color-primary)"),
+                                opacity: isLastAdmin(u) ? 0.4 : 1,
+                                cursor: isLastAdmin(u) ? "not-allowed" : "pointer",
+                              }}
+                              title={isLastAdmin(u) ? "Cannot edit the last admin user" : "Edit user"}
+                            >
                               Edit
                             </button>
                             <button
                               onClick={() => { setDeletingUserId(u.id); setFormError(null); }}
-                              disabled={currentUser?.id === u.id}
+                              disabled={currentUser?.id === u.id || isLastAdmin(u)}
                               style={{
                                 ...actionBtn("var(--color-danger)"),
-                                opacity: currentUser?.id === u.id ? 0.4 : 1,
-                                cursor: currentUser?.id === u.id ? "not-allowed" : "pointer",
+                                opacity: currentUser?.id === u.id || isLastAdmin(u) ? 0.4 : 1,
+                                cursor: currentUser?.id === u.id || isLastAdmin(u) ? "not-allowed" : "pointer",
                               }}
-                              title={currentUser?.id === u.id ? "Cannot delete your own account" : "Delete user"}
+                              title={
+                                currentUser?.id === u.id
+                                  ? "Cannot delete your own account"
+                                  : isLastAdmin(u)
+                                    ? "Cannot delete the last admin user"
+                                    : "Delete user"
+                              }
                             >
                               Delete
                             </button>

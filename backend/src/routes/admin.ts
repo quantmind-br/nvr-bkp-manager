@@ -2,8 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { requireRole } from "../plugins/auth.js";
 import { logAction } from "../services/audit.js";
 import {
+  buildCandidateSettings,
   getPublicSettings,
-  getStoredPassword,
   saveSettings,
 } from "../services/settings.js";
 import { testConnection } from "../services/sftp.js";
@@ -77,19 +77,18 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: "Path must be absolute and cannot contain traversal segments" });
       }
 
-      const existingPassword = getStoredPassword();
-      const effectivePassword = password && password.length > 0 ? password : existingPassword;
-      if (!effectivePassword) {
-        return reply.status(400).send({ error: "Password is required until one is configured" });
-      }
-
-      const canConnect = await testConnection({
+      const candidate = buildCandidateSettings({
         host: trimmedHost,
         port: validatedPort,
         user: trimmedUser,
-        password: effectivePassword,
         path: validatedPath,
+        password,
       });
+      if (!candidate) {
+        return reply.status(400).send({ error: "Password is required until one is configured" });
+      }
+
+      const canConnect = await testConnection(candidate);
 
       if (!canConnect) {
         return reply.status(400).send({ error: "Unable to connect with the provided settings" });
