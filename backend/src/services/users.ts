@@ -34,6 +34,8 @@ export interface User {
 export type SafeUser = Omit<User, "password">;
 
 const SALT_ROUNDS = 10;
+export const CACHE_TTL_MS = 30_000;
+export const userCache = new Map<number, { user: SafeUser; cachedAt: number }>();
 
 export function initUsersTable(): void {
   db.exec(`
@@ -124,6 +126,19 @@ export function getActiveUserForToken(
   userId: number,
   tokenIssuedAtSeconds: number,
 ): SafeUser | null {
+  const cachedEntry = userCache.get(userId);
+  if (cachedEntry && Date.now() - cachedEntry.cachedAt < CACHE_TTL_MS) {
+    const updatedAtSeconds = Math.floor(
+      new Date(
+        `${cachedEntry.user.updated_at.replace(" ", "T")}Z`,
+      ).getTime() / 1000,
+    );
+
+    if (tokenIssuedAtSeconds >= updatedAtSeconds) {
+      return cachedEntry.user;
+    }
+  }
+
   const user = findUserById(userId);
   if (!user) {
     return null;
@@ -137,7 +152,9 @@ export function getActiveUserForToken(
     return null;
   }
 
-  return toSafeUser(user);
+  const safeUser = toSafeUser(user);
+  userCache.set(userId, { user: safeUser, cachedAt: Date.now() });
+  return safeUser;
 }
 
 export async function updateUserByAdmin(
@@ -153,7 +170,7 @@ export async function updateUserByAdmin(
     hashedPassword = await hashPassword(input.password);
   }
 
-  return db.transaction(() => {
+  const updatedUser = db.transaction(() => {
     const targetUser = findUserById(targetUserId);
     if (!targetUser) {
       throw new UserNotFoundError(targetUserId);
@@ -205,6 +222,9 @@ export async function updateUserByAdmin(
 
     return toSafeUser(findUserById(targetUserId)!);
   })();
+
+  userCache.delete(targetUserId);
+  return updatedUser;
 }
 
 const deleteUserByAdminTransaction = db.transaction(
@@ -231,4 +251,5 @@ export function deleteUserByAdmin(
   actorUserId: number,
 ): void {
   deleteUserByAdminTransaction(targetUserId, actorUserId);
+  userCache.delete(targetUserId);
 }

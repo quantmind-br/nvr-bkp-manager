@@ -24,6 +24,10 @@ export function initAuditTable(): void {
       created_at TEXT    NOT NULL DEFAULT (datetime('now'))
     )
   `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at
+    ON audit_logs (created_at DESC)
+  `);
 }
 
 export function logAction(

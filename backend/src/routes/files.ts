@@ -2,8 +2,9 @@ import type { FastifyInstance } from "fastify";
 import type { FileEntry, SftpStream } from "../services/sftp.js";
 import {
   deleteFile,
-  getFileSize,
+  deleteFiles,
   getReadStream,
+  getReadStreamWithSize,
   listFiles,
   StorageNotConfiguredError,
   uploadFile,
@@ -264,7 +265,7 @@ export async function fileRoutes(app: FastifyInstance) {
       try {
         const files = (await listFiles(remotePath)).map((file) => ({
           ...file,
-          parsed: buildParsedMetadata(file.name),
+          parsed: file.isDirectory ? undefined : buildParsedMetadata(file.name),
         }));
 
         if (remotePath !== "/" && remotePath !== "") {
@@ -362,23 +363,9 @@ export async function fileRoutes(app: FastifyInstance) {
 
       const remoteFilePath = buildRemotePath(remotePath, fileName);
 
-      let size: number;
-      try {
-        size = await getFileSize(remoteFilePath);
-      } catch (err) {
-        if (err instanceof StorageNotConfiguredError) {
-          return reply.status(503).send({ error: "Storage not configured" });
-        }
-
-        const message = err instanceof Error ? err.message : "Unknown error";
-        return reply
-          .status(502)
-          .send({ error: "File not found", details: message });
-      }
-
       let sftpHandle;
       try {
-        sftpHandle = await getReadStream(remoteFilePath);
+        sftpHandle = await getReadStreamWithSize(remoteFilePath);
       } catch (err) {
         if (err instanceof StorageNotConfiguredError) {
           return reply.status(503).send({ error: "Storage not configured" });
@@ -390,7 +377,7 @@ export async function fileRoutes(app: FastifyInstance) {
           .send({ error: "Download failed", details: message });
       }
 
-      const { stream, sftp } = sftpHandle;
+      const { stream, sftp, size } = sftpHandle;
 
       const raw = reply.raw;
       raw.writeHead(200, {
@@ -550,6 +537,8 @@ export async function fileRoutes(app: FastifyInstance) {
       }
 
       const results: { file: string; success: boolean; error?: string }[] = [];
+      const validatedPaths: string[] = [];
+      const pathToName = new Map<string, string>();
 
       for (const raw of fileList) {
         const safe = validateFileName(raw);
@@ -558,17 +547,36 @@ export async function fileRoutes(app: FastifyInstance) {
           continue;
         }
         const remoteFilePath = buildRemotePath(remotePath, safe);
+        validatedPaths.push(remoteFilePath);
+        pathToName.set(remoteFilePath, safe);
+      }
+
+      if (validatedPaths.length > 0) {
         try {
-          await deleteFile(remoteFilePath);
-          logAction(request.user.sub, request.user.username, "delete", remoteFilePath, undefined, request.ip);
-          results.push({ file: safe, success: true });
+          const deleteResults = await deleteFiles(validatedPaths);
+
+          for (const [remoteFilePath, err] of deleteResults) {
+            const safe = pathToName.get(remoteFilePath)!;
+            if (err === null) {
+              logAction(request.user.sub, request.user.username, "delete", remoteFilePath, undefined, request.ip);
+              results.push({ file: safe, success: true });
+            } else {
+              results.push({ file: safe, success: false, error: err.message });
+            }
+          }
         } catch (err) {
           if (err instanceof StorageNotConfiguredError) {
             return reply.status(503).send({ error: "Storage not configured" });
           }
 
+          // Connection-level failure — mark all remaining as failed
           const message = err instanceof Error ? err.message : "Unknown error";
-          results.push({ file: safe, success: false, error: message });
+          for (const remoteFilePath of validatedPaths) {
+            const safe = pathToName.get(remoteFilePath)!;
+            if (!results.some((r) => r.file === safe)) {
+              results.push({ file: safe, success: false, error: message });
+            }
+          }
         }
       }
 
@@ -576,7 +584,163 @@ export async function fileRoutes(app: FastifyInstance) {
     },
   );
 
-  // Bulk download as zip
+  app.post<{ Body: BulkFileActionBody }>(
+    "/api/bulk-download-token",
+    { preHandler: [requireRole("admin", "viewer")] },
+    async (request, reply) => {
+      const fileList = request.body?.files;
+      const remotePath = validatePath(request.body?.path);
+
+      if (!Array.isArray(fileList) || fileList.length === 0) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or empty 'files' array" });
+      }
+      if (!remotePath) {
+        return reply
+          .status(400)
+          .send({ error: "Missing or invalid 'path' parameter" });
+      }
+      if (fileList.length > 100) {
+        return reply
+          .status(400)
+          .send({ error: "Maximum 100 files per bulk download" });
+      }
+
+      for (const raw of fileList) {
+        if (!validateFileName(raw)) {
+          return reply
+            .status(400)
+            .send({ error: `Invalid filename: ${raw}` });
+        }
+      }
+
+      const downloadToken = app.jwt.sign(
+        {
+          sub: request.user.sub,
+          username: request.user.username,
+          role: request.user.role,
+          files: fileList,
+          path: remotePath,
+          purpose: "bulk-download",
+        },
+        { expiresIn: 60 },
+      );
+
+      const downloadUrl = `/api/bulk-download?downloadToken=${encodeURIComponent(downloadToken)}`;
+      return { downloadUrl, expiresInSeconds: 60 };
+    },
+  );
+
+  app.get<{ Querystring: { downloadToken?: string } }>(
+    "/api/bulk-download",
+    async (request, reply) => {
+      const token = request.query.downloadToken;
+      if (!token) {
+        return reply
+          .status(400)
+          .send({ error: "Missing 'downloadToken' parameter" });
+      }
+
+      let payload: { files: string[]; path: string; purpose?: string };
+      try {
+        payload = app.jwt.verify(token) as typeof payload;
+      } catch {
+        return reply.status(401).send({ error: "Invalid or expired download token" });
+      }
+
+      if (payload.purpose !== "bulk-download") {
+        return reply.status(403).send({ error: "Invalid bulk download token" });
+      }
+
+      const fileList = payload.files;
+      const remotePath = validatePath(payload.path);
+
+      if (!Array.isArray(fileList) || fileList.length === 0) {
+        return reply.status(400).send({ error: "Invalid token payload" });
+      }
+      if (!remotePath) {
+        return reply.status(400).send({ error: "Invalid token payload" });
+      }
+
+      for (const raw of fileList) {
+        if (!validateFileName(raw)) {
+          return reply
+            .status(400)
+            .send({ error: `Invalid filename: ${raw}` });
+        }
+      }
+
+      const handles: Array<{ fileName: string; handle: SftpStream }> = [];
+
+      try {
+        for (const fileName of fileList) {
+          const remoteFilePath = buildRemotePath(remotePath, fileName);
+          const handle = await getReadStream(remoteFilePath);
+          handles.push({ fileName, handle });
+        }
+      } catch (err) {
+        for (const { handle } of handles) {
+          handle.sftp.end().catch(() => {});
+        }
+
+        if (err instanceof StorageNotConfiguredError) {
+          return reply.status(503).send({ error: "Storage not configured" });
+        }
+
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return reply
+          .status(502)
+          .send({ error: "Bulk download failed", details: message });
+      }
+
+      const raw = reply.raw;
+      raw.writeHead(200, {
+        "Content-Type": "application/zip",
+        "Content-Disposition": 'attachment; filename="nvr-recordings.zip"',
+        "Transfer-Encoding": "chunked",
+      });
+
+      const archive = archiver("zip", { zlib: { level: 1 } });
+      const sftpClients: Array<{ end: () => Promise<unknown> }> = [];
+
+      archive.on("error", (err) => {
+        console.error("[Bulk download] Archive error:", err.message);
+        for (const sftp of sftpClients) sftp.end().catch(() => {});
+        if (!raw.writableEnded) raw.end();
+      });
+
+      archive.pipe(raw);
+
+      try {
+        for (const { fileName, handle } of handles) {
+          sftpClients.push(handle.sftp);
+          archive.append(handle.stream, { name: fileName });
+
+          handle.stream.on("error", () => {
+            handle.sftp.end().catch(() => {});
+          });
+          handle.stream.on("end", () => {
+            handle.sftp.end().catch(() => {});
+          });
+        }
+
+        await archive.finalize();
+      } catch (err) {
+        console.error("[Bulk download] Error:", err instanceof Error ? err.message : err);
+        for (const sftp of sftpClients) sftp.end().catch(() => {});
+        if (!raw.writableEnded) raw.end();
+      }
+
+      request.raw.on("close", () => {
+        archive.abort();
+        for (const sftp of sftpClients) sftp.end().catch(() => {});
+      });
+
+      return reply.hijack();
+    },
+  );
+
   app.post<{ Body: BulkFileActionBody }>(
     "/api/bulk-download",
     async (request, reply) => {

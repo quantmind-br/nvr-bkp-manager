@@ -274,7 +274,7 @@ export default function FileList() {
     });
   }, [files, timeFrom, timeTo]);
 
-  const sortedFiles = [...timeFilteredFiles].sort((a, b) => {
+  const sortedFiles = useMemo(() => [...timeFilteredFiles].sort((a, b) => {
     if (a.name === "..") return -1;
     if (b.name === "..") return 1;
     if (a.isDirectory && !b.isDirectory) return -1;
@@ -297,7 +297,7 @@ export default function FileList() {
     if (valA < valB) return sortDirection === "asc" ? -1 : 1;
     if (valA > valB) return sortDirection === "asc" ? 1 : -1;
     return 0;
-  });
+  }), [timeFilteredFiles, sortColumn, sortDirection]);
 
   const handleSort = (col: "channel" | "start" | "end") => {
     if (sortColumn === col) {
@@ -378,7 +378,7 @@ export default function FileList() {
   async function handleBulkDownload() {
     setBulkDownloading(true);
     try {
-      const res = await apiFetch("/api/bulk-download", {
+      const res = await apiFetch("/api/bulk-download-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ files: Array.from(selectedForBulk), path: currentPath }),
@@ -387,15 +387,13 @@ export default function FileList() {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const data = (await res.json()) as { downloadUrl: string };
       const a = document.createElement("a");
-      a.href = url;
+      a.href = data.downloadUrl;
       a.download = "nvr-recordings.zip";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bulk download failed");
     } finally {

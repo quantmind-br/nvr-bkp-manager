@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, [token, logout]);
 
-  async function login(username: string, password: string): Promise<void> {
+  const login = useCallback(async (username: string, password: string): Promise<void> => {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("token", data.token);
     setToken(data.token);
     setUser(data.user);
-  }
+  }, []);
 
   return (
     <AuthContext.Provider

@@ -70,10 +70,11 @@ export default function VideoPlayer({ fileName, currentPath, onClose }: VideoPla
 
         // Poll until playlist is ready (FFmpeg may still be starting)
         setStatus(seekTo > 0 ? `Transcoding from ${formatTime(seekTo)}...` : "Transcoding...");
-        for (let attempt = 0; attempt < 60; attempt++) {
+        for (let attempt = 0; attempt < 30; attempt++) {
           const check = await fetch(playlistUrl);
           if (check.ok) break;
-          await new Promise((r) => setTimeout(r, 2000));
+          const delay = Math.min(1000 * Math.pow(1.5, attempt), 10000);
+          await new Promise((r) => setTimeout(r, delay));
         }
 
         if (!videoRef.current) return;

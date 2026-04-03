@@ -1,8 +1,10 @@
+import { lazy, Suspense } from "react";
 import { Navigate, NavLink, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth";
 import LoginPage from "./components/LoginPage";
 import FileList from "./components/FileList";
-import AdminPanel from "./components/admin/AdminPanel";
+
+const AdminPanel = lazy(() => import("./components/admin/AdminPanel"));
 
 const navLinkBaseStyle = {
   textDecoration: "none",
@@ -119,7 +121,7 @@ export default function App() {
         <Route path="/" element={<FileList />} />
         <Route
           path="/admin"
-          element={isAdmin ? <AdminPanel /> : <Navigate to="/" replace />}
+          element={isAdmin ? <Suspense fallback={<div>Loading...</div>}><AdminPanel /></Suspense> : <Navigate to="/" replace />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

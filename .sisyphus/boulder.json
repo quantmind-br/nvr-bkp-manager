@@ -1,62 +1,16 @@
 {
-  "active_plan": "/home/diogo/dev/nvr-bkp-manager/.sisyphus/plans/admin-panel.md",
-  "started_at": "2026-04-02T21:52:16.282Z",
+  "active_plan": "/home/diogo/dev/nvr-bkp-manager/.sisyphus/plans/performance-optimizations.md",
+  "started_at": "2026-04-03T01:28:54.490Z",
   "session_ids": [
-    "ses_2afe9d751ffeNpCVHlNMtD1kFD",
-    "ses_2afccc15effe1m5mz3DMj0hy3I",
-    "ses_2afccc15fffeFkhGwJLRrxgyoK",
-    "ses_2afcd4548ffe3WvpfUcsyphxTZ",
-    "ses_2afc76929ffevPuni4zhpwe08L",
-    "ses_2afc7692affe2ehZWYsrSWDt9b",
-    "ses_2afbb6768ffea8CjdH15xNDhU8",
-    "ses_2afb6376effeSr2Y8R29DLB5ik",
-    "ses_2afb63731ffeSSeIiCf1rYf1YU",
-    "ses_2afa7ec47ffeaxA1OR83NP8q5W",
-    "ses_2afa1ffb6ffc0Fu90GaU2s7YaP",
-    "ses_2afa1ffb5ffe8NrqsJTJJ9Q6Lz",
-    "ses_2afa170abffe0330895Fn5eAFX",
-    "ses_2afa0d707ffe0jAfwjw7nEsVy4",
-    "ses_2afa1ffb9ffeBZvFzf5K3514hH",
-    "ses_2af9fedb8ffetjOT5177l45AE0",
-    "ses_2af9c46beffe31KpsugkCY9CNc",
-    "ses_2af9c46c1ffexma7DZSkkmd2LE",
-    "ses_2af9922e0ffel2bRFjbPiIjDeb",
-    "ses_2af9922ddffecLF6LhwONr1oUf",
     "ses_2af741dd4ffeEkA6DYfTiu7Hf8",
-    "ses_2af096b2affeGFJTEEA59FD0IL",
-    "ses_2af093039ffet3cFQithySHrgF",
-    "ses_2af08aca9ffeoY8BS3tnSladqJ",
-    "ses_2af08e46affeRxxI8HaXOqNpo2"
+    "ses_2aee5c181ffemMnt3fg1hsUkQf",
+    "ses_2aee633feffe0LA1ecmq5GtWj2",
+    "ses_2aee5fba7ffeUX9fyKFE1FkTz9",
+    "ses_2aee680a6ffeWObaHNbLl0G7HR",
+    "ses_2aedf8eb5ffeHD6RpErP3fKN1g",
+    "ses_2aedce2d9ffeF4hDDtOE4sE2bG"
   ],
-  "plan_name": "admin-panel",
+  "plan_name": "performance-optimizations",
   "agent": "atlas",
-  "task_sessions": {
-    "todo:1": {
-      "task_key": "todo:1",
-      "task_label": "1",
-      "task_title": "Criar persistência de settings SFTP no SQLite",
-      "session_id": "ses_2afcd4548ffe3WvpfUcsyphxTZ",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-02T21:59:34.590Z"
-    },
-    "todo:3": {
-      "task_key": "todo:3",
-      "task_label": "3",
-      "task_title": "Revalidar usuários autenticados contra o banco em cada request",
-      "session_id": "ses_2afbb6768ffea8CjdH15xNDhU8",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-02T22:18:56.640Z"
-    },
-    "todo:5": {
-      "task_key": "todo:5",
-      "task_label": "5",
-      "task_title": "Expor API administrativa de settings do servidor",
-      "session_id": "ses_2afa7ec47ffeaxA1OR83NP8q5W",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-02T22:40:37.261Z"
-    }
-  }
+  "task_sessions": {}
 }

@@ -1,18 +1,31 @@
 import { spawn, type ChildProcess } from "child_process";
-import { mkdirSync, rmSync, existsSync } from "fs";
+import { watch, constants } from "fs";
+import { access, mkdir, rm } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import { randomBytes } from "crypto";
 import { getReadStream, type SftpStream } from "./sftp.js";
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export interface HlsSession {
   sessionId: string;
   hlsDir: string;
   startSeconds: number;
   durationSeconds: number | null;
+  createdAt: number;
   cleanup: () => void;
   ready: Promise<void>;
 }
+
+export const SESSION_TTL_MS = 30 * 60 * 1000;
 
 // Always use pipe-based SFTP streaming (FFmpeg's native SFTP has auth issues with special chars in passwords)
 
@@ -44,7 +57,7 @@ export async function createHlsSession(
 
   if (!sessionId) sessionId = randomBytes(8).toString("hex");
   const hlsDir = join(tmpdir(), `nvr-hls-${sessionId}`);
-  mkdirSync(hlsDir, { recursive: true });
+  await mkdir(hlsDir, { recursive: true });
 
   const playlistPath = join(hlsDir, "stream.m3u8");
   const durationSeconds = parseDurationFromFilename(fileName);
@@ -60,9 +73,9 @@ export async function createHlsSession(
       ffmpegProcess.kill("SIGKILL");
     }
     sftpHandle?.sftp.end().catch(() => {});
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
-        if (existsSync(hlsDir)) rmSync(hlsDir, { recursive: true });
+        if (await fileExists(hlsDir)) await rm(hlsDir, { recursive: true });
       } catch { /* ignore */ }
     }, 30000);
   }
@@ -109,32 +122,57 @@ export async function createHlsSession(
   ffmpegProcess.on("close", () => { /* finished */ });
 
   const ready = new Promise<void>((resolve, reject) => {
+    let settled = false;
+    let watcher: ReturnType<typeof watch> | undefined;
+
     const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      watcher?.close();
       reject(new Error("HLS stream timeout — no segments produced"));
       cleanup();
     }, 120000);
 
-    const check = setInterval(() => {
-      if (existsSync(playlistPath)) {
-        clearInterval(check);
+    // Check if file already exists before attaching watcher (race condition)
+    fileExists(playlistPath).then((exists) => {
+      if (settled) return;
+      if (exists) {
+        settled = true;
         clearTimeout(timeout);
         resolve();
+        return;
       }
-    }, 500);
+
+      watcher = watch(hlsDir, (_, filename) => {
+        if (settled) return;
+        if (filename === "stream.m3u8") {
+          settled = true;
+          clearTimeout(timeout);
+          watcher?.close();
+          resolve();
+        }
+      });
+    });
 
     ffmpegProcess!.on("close", (code) => {
-      clearInterval(check);
-      clearTimeout(timeout);
-      if (!existsSync(playlistPath)) {
-        reject(new Error(`FFmpeg exited with code ${code} before producing segments`));
-      }
+      fileExists(playlistPath).then((exists) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        watcher?.close();
+        if (exists) {
+          resolve();
+        } else {
+          reject(new Error(`FFmpeg exited with code ${code} before producing segments`));
+        }
+      });
     });
   });
 
-  return { sessionId, hlsDir, startSeconds, durationSeconds, cleanup, ready };
+  return { sessionId, hlsDir, startSeconds, durationSeconds, createdAt: Date.now(), cleanup, ready };
 }
 
-const activeSessions = new Map<string, HlsSession>();
+export const activeSessions = new Map<string, HlsSession>();
 
 export function registerSession(session: HlsSession): void {
   activeSessions.set(session.sessionId, session);
@@ -151,3 +189,18 @@ export function removeSession(sessionId: string): void {
     activeSessions.delete(sessionId);
   }
 }
+
+export function purgeExpiredSessions(now = Date.now()): void {
+  for (const [id, session] of activeSessions) {
+    if (session.createdAt === 0) continue;
+    if (now - session.createdAt > SESSION_TTL_MS) {
+      removeSession(id);
+    }
+  }
+}
+
+const sessionCleanupInterval = setInterval(() => {
+  purgeExpiredSessions();
+}, 60_000);
+
+sessionCleanupInterval.unref?.();

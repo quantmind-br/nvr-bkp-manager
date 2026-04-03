@@ -13,6 +13,8 @@ declare module "@fastify/jwt" {
       scope?: string;
       file?: string;
       path?: string;
+      files?: string[];
+      purpose?: string;
       iat?: number;
     };
     user: {
@@ -22,6 +24,8 @@ declare module "@fastify/jwt" {
       scope?: string;
       file?: string;
       path?: string;
+      files?: string[];
+      purpose?: string;
       iat?: number;
     };
   }
@@ -34,6 +38,8 @@ type AuthenticatedUser = {
   scope?: string;
   file?: string;
   path?: string;
+  files?: string[];
+  purpose?: string;
   iat?: number;
 };
 
@@ -112,6 +118,30 @@ async function authPlugin(app: FastifyInstance): Promise<void> {
           }
           if (decoded.path !== query["path"]) {
             return reply.status(403).send({ error: "Path mismatch" });
+          }
+          request.user = decoded;
+
+          const hydratedUser = hydrateActiveUser(request.user);
+          if (!hydratedUser) {
+            return reply.status(401).send({ error: "Unauthorized" });
+          }
+
+          request.user = hydratedUser;
+          return;
+        } catch {
+          return reply.status(401).send({ error: "Invalid download token" });
+        }
+      }
+
+      // Accept downloadToken query param for bulk-download GET (browser can't set headers on navigations)
+      if (
+        url === "/api/bulk-download" &&
+        query["downloadToken"]
+      ) {
+        try {
+          const decoded = app.jwt.verify<AuthenticatedUser>(query["downloadToken"]);
+          if (decoded.purpose !== "bulk-download") {
+            return reply.status(403).send({ error: "Invalid bulk download token" });
           }
           request.user = decoded;
 

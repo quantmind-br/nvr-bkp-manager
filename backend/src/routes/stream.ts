@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
-import { createReadStream, existsSync } from "fs";
+import { createReadStream, constants } from "fs";
+import { access, mkdir, readdir, writeFile, unlink } from "fs/promises";
 import { join } from "path";
+import { tmpdir } from "os";
+import { randomBytes } from "crypto";
+import { spawn } from "child_process";
 import {
   createHlsSession,
   registerSession,
@@ -10,10 +14,19 @@ import {
 import { logAction } from "../services/audit.js";
 import {
   StorageNotConfiguredError,
-  testConnection,
+  getReadStream,
   type SftpStream,
 } from "../services/sftp.js";
 import { buildRemotePath, validatePath } from "./files.js";
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function streamRoutes(app: FastifyInstance) {
   // Start an HLS transcoding session — returns sessionId + duration
@@ -44,19 +57,6 @@ export async function streamRoutes(app: FastifyInstance) {
 
       const remoteFilePath = buildRemotePath(remotePath, fileName);
 
-      try {
-        const storageConnected = await testConnection();
-        if (!storageConnected) {
-          return reply.status(502).send({ error: "Storage connection failed" });
-        }
-      } catch (err) {
-        if (err instanceof StorageNotConfiguredError) {
-          return reply.status(503).send({ error: "Storage not configured" });
-        }
-
-        throw err;
-      }
-
       // Parse duration from filename (no I/O needed)
       const durationMatch = fileName.match(
         /(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/,
@@ -70,7 +70,6 @@ export async function streamRoutes(app: FastifyInstance) {
       }
 
       // Generate session ID immediately and return — no I/O blocking
-      const { randomBytes } = await import("crypto");
       const sessionId = randomBytes(8).toString("hex");
 
       logAction(
@@ -83,16 +82,14 @@ export async function streamRoutes(app: FastifyInstance) {
       );
 
       // Pre-register a placeholder session so playlist polling finds it
-      const { mkdirSync } = await import("fs");
-      const { join } = await import("path");
-      const { tmpdir } = await import("os");
       const hlsDir = join(tmpdir(), `nvr-hls-${sessionId}`);
-      mkdirSync(hlsDir, { recursive: true });
+      await mkdir(hlsDir, { recursive: true });
       registerSession({
         sessionId,
         hlsDir,
         startSeconds,
         durationSeconds,
+        createdAt: 0,
         cleanup: () => {},
         ready: Promise.resolve(),
       });
@@ -122,7 +119,7 @@ export async function streamRoutes(app: FastifyInstance) {
       }
 
       const playlistPath = join(session.hlsDir, "stream.m3u8");
-      if (!existsSync(playlistPath)) {
+      if (!(await fileExists(playlistPath))) {
         return reply.status(404).send({ error: "Playlist not ready" });
       }
 
@@ -153,7 +150,7 @@ export async function streamRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: "Invalid segment" });
       }
 
-      if (!existsSync(segmentPath)) {
+      if (!(await fileExists(segmentPath))) {
         return reply.status(404).send({ error: "Segment not found" });
       }
 
@@ -174,18 +171,15 @@ export async function streamRoutes(app: FastifyInstance) {
     const test = request.query.test ?? "info";
 
     if (test === "info") {
-      const { tmpdir } = await import("os");
-      const { writeFileSync, unlinkSync, readdirSync } = await import("fs");
       const tmp = tmpdir();
       const testFile = `${tmp}/nvr-test`;
-      writeFileSync(testFile, "ok");
-      unlinkSync(testFile);
-      const hlsDirs = readdirSync(tmp).filter(f => f.startsWith("nvr-hls-"));
+      await writeFile(testFile, "ok");
+      await unlink(testFile);
+      const hlsDirs = (await readdir(tmp)).filter(f => f.startsWith("nvr-hls-"));
       return { tmp, writable: true, hlsSessions: hlsDirs.length, hlsDirs };
     }
 
     if (test === "sftp") {
-      const { getReadStream } = await import("../services/sftp.js");
       let handle: SftpStream | undefined;
 
       try {
@@ -220,14 +214,8 @@ export async function streamRoutes(app: FastifyInstance) {
     }
 
     if (test === "ffmpeg") {
-      const { spawn } = await import("child_process");
-      const { getReadStream } = await import("../services/sftp.js");
-      const { mkdirSync, existsSync, readdirSync } = await import("fs");
-      const { join } = await import("path");
-      const { tmpdir } = await import("os");
-
       const testDir = join(tmpdir(), "nvr-hls-debug-test");
-      mkdirSync(testDir, { recursive: true });
+      await mkdir(testDir, { recursive: true });
 
       let handle: SftpStream | undefined;
 
@@ -253,7 +241,7 @@ export async function streamRoutes(app: FastifyInstance) {
           ffmpeg.on("close", (c) => { clearTimeout(timeout); resolve(c); });
         });
 
-        const files = existsSync(testDir) ? readdirSync(testDir) : [];
+        const files = (await fileExists(testDir)) ? await readdir(testDir) : [];
         const errLines = stderr.split("\n").filter(l => l.toLowerCase().includes("error")).slice(0, 3);
         const frameMatch = stderr.match(/frame=\s*(\d+)/);
 

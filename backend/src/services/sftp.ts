@@ -128,6 +128,44 @@ export async function getFileSize(fileName: string): Promise<number> {
   }
 }
 
+export async function getReadStreamWithSize(
+  remotePath: string,
+): Promise<SftpStream & { size: number }> {
+  const settings = getSftpSettingsOrThrow();
+  const sftp = await connectSftp();
+
+  const fullPath = normalizePath(settings.path, remotePath);
+  const stats = await sftp.stat(fullPath);
+  const stream = sftp.createReadStream(fullPath);
+
+  return { stream, sftp, size: stats.size };
+}
+
+export async function deleteFiles(
+  fileNames: string[],
+): Promise<Map<string, Error | null>> {
+  const settings = getSftpSettingsOrThrow();
+  const sftp = await connectSftp();
+  const results = new Map<string, Error | null>();
+  try {
+    for (const fileName of fileNames) {
+      const fullPath = normalizePath(settings.path, fileName);
+      try {
+        await sftp.delete(fullPath);
+        results.set(fileName, null);
+      } catch (err) {
+        results.set(
+          fileName,
+          err instanceof Error ? err : new Error(String(err)),
+        );
+      }
+    }
+  } finally {
+    await sftp.end();
+  }
+  return results;
+}
+
 function normalizePath(basePath: string, relativePath: string): string {
   // Prevent directory traversal outside base path
   const cleaned = relativePath.replace(/\.\./g, "").replace(/\/+/g, "/");
