@@ -1,7 +1,19 @@
 import type { RefObject } from "react";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
 import type { FileEntry, SortColumn, SortDirection } from "./types";
-import { actionBtn, formatDate, formatSize, getExtension, isPlayable } from "./utils";
+import { formatDate, formatSize, getExtension, isPlayable } from "./utils";
 
 interface FileTableProps {
   files: FileEntry[];
@@ -49,57 +61,42 @@ export default function FileTable({
   void someSelected;
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          fontSize: "0.9rem",
-          minWidth: "960px",
-        }}
-      >
-        <thead>
-          <tr
-            style={{
-              borderBottom: "2px solid var(--color-border)",
-              textAlign: "left",
-            }}
-          >
-            <th style={{ padding: "0.5rem", width: "40px" }}>
+    <div className="overflow-x-auto">
+      <Table className="min-w-[960px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-10">
               <input
                 ref={headerCheckboxRef}
                 type="checkbox"
                 checked={allSelected}
                 onChange={onToggleSelectAll}
-                style={{ cursor: "pointer" }}
+                className="cursor-pointer"
               />
-            </th>
-            <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => onSort("channel")}>
+            </TableHead>
+            <TableHead className="cursor-pointer" onClick={() => onSort("channel")}>
               Channel {sortColumn === "channel" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-            </th>
-            <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => onSort("start")}>
+            </TableHead>
+            <TableHead className="cursor-pointer" onClick={() => onSort("start")}>
               Start {sortColumn === "start" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-            </th>
-            <th style={{ padding: "0.5rem", cursor: "pointer" }} onClick={() => onSort("end")}>
+            </TableHead>
+            <TableHead className="cursor-pointer" onClick={() => onSort("end")}>
               End {sortColumn === "end" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-            </th>
-            <th style={{ padding: "0.5rem" }}>Duration</th>
-            <th style={{ padding: "0.5rem", width: "100px" }}>Size</th>
-            <th style={{ padding: "0.5rem", width: "180px" }}>Modified</th>
-            <th style={{ padding: "0.5rem", width: "60px" }}>Type</th>
-            <th style={{ padding: "0.5rem", width: "180px" }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+            </TableHead>
+            <TableHead>Duration</TableHead>
+            <TableHead className="w-24">Size</TableHead>
+            <TableHead className="w-44">Modified</TableHead>
+            <TableHead className="w-16">Type</TableHead>
+            <TableHead className="w-44">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {files.map((file) => (
-            <tr
+            <TableRow
               key={file.name}
               tabIndex={file.isDirectory ? 0 : undefined}
               data-dir-row={file.isDirectory ? "true" : undefined}
-              style={{
-                borderBottom: "1px solid #eee",
-                cursor: file.isDirectory ? "pointer" : "default",
-              }}
+              className={file.isDirectory ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}
               onClick={() => file.isDirectory && onNavigate(file.name)}
               onKeyDown={(e) => {
                 if (e.key === "Escape") onSetConfirmingDelete(null);
@@ -109,142 +106,126 @@ export default function FileTable({
               }}
               title={file.name}
             >
-              <td style={{ padding: "0.5rem" }}>
+              <TableCell>
                 {!file.isDirectory && file.name !== ".." && (
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selectedForBulk.has(file.name)}
-                    onChange={(e) => {
-                      e.stopPropagation();
+                    onCheckedChange={() => {
                       onToggleFileSelect(file.name);
                     }}
                     onClick={(e) => e.stopPropagation()}
-                    style={{ cursor: "pointer" }}
+                    className="cursor-pointer"
                   />
                 )}
-              </td>
+              </TableCell>
               {file.parsed?.channel != null ? (
                 <>
-                  <td style={{ padding: "0.5rem" }}>
-                    <span
-                      style={{
-                        background: "var(--color-primary)",
-                        color: "white",
-                        padding: "2px 6px",
-                        borderRadius: "10px",
-                        fontSize: "0.8rem",
-                        fontWeight: "bold",
-                      }}
-                    >
+                  <TableCell>
+                    <Badge variant="default" className="text-xs font-bold">
                       {file.parsed.channel?.toUpperCase() || "-"}
-                    </span>
-                  </td>
-                  <td style={{ padding: "0.5rem" }}>{formatDate(file.parsed.startTime || "")}</td>
-                  <td style={{ padding: "0.5rem" }}>{formatDate(file.parsed.endTime || "")}</td>
-                  <td style={{ padding: "0.5rem" }}>{file.parsed.duration || "-"}</td>
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">{formatDate(file.parsed.startTime || "")}</TableCell>
+                  <TableCell className="text-sm">{formatDate(file.parsed.endTime || "")}</TableCell>
+                  <TableCell className="text-sm">{file.parsed.duration || "-"}</TableCell>
                 </>
               ) : (
-                <td
+                <TableCell
                   colSpan={4}
-                  style={{
-                    padding: "0.5rem",
-                    color: file.isDirectory ? "var(--color-primary)" : "inherit",
-                    fontWeight: file.isDirectory ? 600 : 400,
-                  }}
+                  className={file.isDirectory ? "font-semibold text-primary" : ""}
                 >
-                  {file.isDirectory ? "[DIR] " : ""}
+                  {file.isDirectory ? "📁 " : ""}
                   {file.name}
-                </td>
+                </TableCell>
               )}
-              <td style={{ padding: "0.5rem", color: "var(--color-text-muted)" }}>
+              <TableCell className="text-sm text-muted-foreground">
                 {file.isDirectory ? "-" : formatSize(file.size)}
-              </td>
-              <td style={{ padding: "0.5rem", color: "var(--color-text-muted)" }}>
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
                 {formatDate(file.modifiedAt)}
-              </td>
-              <td
-                style={{
-                  padding: "0.5rem",
-                  color: "var(--color-text-faint)",
-                  textTransform: "uppercase",
-                  fontSize: "0.8rem",
-                }}
-              >
+              </TableCell>
+              <TableCell className="text-xs uppercase text-muted-foreground">
                 {file.isDirectory ? "dir" : getExtension(file.name) || "-"}
-              </td>
-              <td style={{ padding: "0.5rem", display: "flex", gap: "4px" }}>
+              </TableCell>
+              <TableCell>
+                <div className="flex gap-1">
                 {!file.isDirectory && isPlayable(file.name) && (
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 border-primary text-xs text-primary"
                     onClick={(e) => {
                       e.stopPropagation();
                       onPlay(file.name);
                     }}
-                    style={actionBtn("var(--color-primary)")}
                   >
                     Play
-                  </button>
+                  </Button>
                 )}
                 {!file.isDirectory && file.name !== ".." && (
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 border-green-600 text-xs text-green-600"
                     onClick={(e) => {
                       e.stopPropagation();
                       onDownload(file.name);
                     }}
                     disabled={downloadingFile === file.name}
-                    style={{
-                      ...actionBtn("var(--color-success)"),
-                      opacity: downloadingFile === file.name ? 0.6 : 1,
-                    }}
                   >
-                    {downloadingFile === file.name ? "Downloading..." : "Download"}
-                  </button>
+                    {downloadingFile === file.name ? "..." : "Download"}
+                  </Button>
                 )}
                 {isAdmin && !file.isDirectory && file.name !== ".." &&
                   (confirmingDelete === file.name ? (
-                    <span style={{ display: "flex", gap: "4px", alignItems: "center", fontSize: "0.8rem" }}>
-                      <span style={{ color: "var(--color-danger)", fontWeight: 600, fontSize: "0.8rem" }}>
+                    <span className="flex items-center gap-1">
+                      <span className="text-xs font-semibold text-destructive">
                         Delete?
                       </span>
-                      <button
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-7 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDelete(file.name);
                         }}
                         disabled={deletingFile === file.name}
-                        style={{
-                          ...actionBtn("var(--color-danger)"),
-                          opacity: deletingFile === file.name ? 0.6 : 1,
-                        }}
                       >
-                        {deletingFile === file.name ? "Deleting..." : "Yes"}
-                      </button>
-                      <button
+                        {deletingFile === file.name ? "..." : "Yes"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
                           onSetConfirmingDelete(null);
                         }}
-                        style={actionBtn("var(--color-text-muted)")}
                       >
                         No
-                      </button>
+                      </Button>
                     </span>
                   ) : (
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 border-destructive text-xs text-destructive"
                       onClick={(e) => {
                         e.stopPropagation();
                         onSetConfirmingDelete(file.name);
                       }}
                       disabled={deletingFile === file.name}
-                      style={actionBtn("var(--color-danger)")}
                     >
                       {deletingFile === file.name ? "..." : "Delete"}
-                    </button>
+                    </Button>
                   ))}
-              </td>
-            </tr>
+                </div>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
