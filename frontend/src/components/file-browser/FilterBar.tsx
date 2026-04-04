@@ -1,4 +1,6 @@
-import type { CSSProperties } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface FilterBarProps {
   availableChannels: string[];
@@ -25,31 +27,6 @@ interface FilterBarProps {
   onClearFilters: () => void;
 }
 
-const filterGroupStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.35rem",
-  padding: "0.5rem",
-  border: "1px solid var(--color-border)",
-  borderRadius: "6px",
-  background: "var(--color-bg-panel)",
-};
-
-const filterLabelStyle: CSSProperties = {
-  fontWeight: 600,
-  fontSize: "0.7rem",
-  color: "var(--color-text-muted)",
-  textTransform: "uppercase",
-  letterSpacing: "0.5px",
-};
-
-const filterInputStyle: CSSProperties = {
-  padding: "0.2rem 0.4rem",
-  borderRadius: "var(--radius-sm)",
-  border: "1px solid var(--color-border)",
-  fontSize: "0.8rem",
-};
-
 export default function FilterBar({
   availableChannels,
   availableTypes,
@@ -75,159 +52,141 @@ export default function FilterBar({
   onClearFilters,
 }: FilterBarProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: "0.5rem",
-        marginBottom: "1rem",
-        flexWrap: "wrap",
-        alignItems: "stretch",
-      }}
-    >
-      <div style={filterGroupStyle}>
-        <span style={filterLabelStyle}>Channel</span>
-        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+    <div className="mb-4 flex flex-wrap items-stretch gap-2">
+      <div className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground">
+          Channel
+        </span>
+        <div className="flex flex-wrap gap-1">
           {availableChannels.length === 0 ? (
-            <span style={{ color: "var(--color-text-faint)", fontSize: "0.8rem" }}>-</span>
+            <span className="text-xs text-muted-foreground">-</span>
           ) : (
             availableChannels.map((ch) => {
               const active = selectedChannels.has(ch);
               return (
-                <button
+                <Badge
                   key={ch}
+                  variant={active ? "default" : "outline"}
+                  className="cursor-pointer select-none"
                   onClick={() => onChannelToggle(ch)}
-                  style={{
-                    padding: "2px 8px",
-                    borderRadius: "10px",
-                    border: active
-                      ? "1px solid var(--color-primary)"
-                      : "1px solid var(--color-border)",
-                    background: active ? "var(--color-primary)" : "#fff",
-                    color: active ? "#fff" : "#333",
-                    cursor: "pointer",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                  }}
                 >
                   {ch.toUpperCase()}
-                </button>
+                </Badge>
               );
             })
           )}
         </div>
       </div>
 
-      <div style={filterGroupStyle}>
-        <span style={filterLabelStyle}>Date</span>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-            <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", minWidth: "62px" }}>
+      <div className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground">
+          Date
+        </span>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-1">
+            <span className="min-w-[62px] text-[0.7rem] text-muted-foreground">
               Single day
             </span>
-            <input
+            <Input
               id="dateFilter"
               type="date"
               value={dateFilter}
               onChange={(e) => onDateFilterChange(e.target.value)}
-              style={filterInputStyle}
+              className="h-7 w-auto px-2 text-xs"
             />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-            <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", minWidth: "62px" }}>
+          <div className="flex items-center gap-1">
+            <span className="min-w-[62px] text-[0.7rem] text-muted-foreground">
               Date range
             </span>
-            <input
+            <Input
               id="startDateFilter"
               type="date"
               value={startDateFilter}
               placeholder="From"
               onChange={(e) => onStartDateChange(e.target.value)}
-              style={filterInputStyle}
+              className="h-7 w-auto px-2 text-xs"
             />
-            <span style={{ color: "var(--color-text-faint)", fontSize: "0.7rem" }}>-</span>
-            <input
+            <span className="text-xs text-muted-foreground">–</span>
+            <Input
               id="endDateFilter"
               type="date"
               value={endDateFilter}
               placeholder="To"
               onChange={(e) => onEndDateChange(e.target.value)}
-              style={filterInputStyle}
+              className="h-7 w-auto px-2 text-xs"
             />
           </div>
         </div>
       </div>
 
-      <div style={filterGroupStyle}>
-        <span style={filterLabelStyle}>Time</span>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <input
+      <div className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground">
+          Time
+        </span>
+        <div className="flex items-center gap-1">
+          <Input
             type="time"
             value={timeFrom}
             onChange={(e) => onTimeFromChange(e.target.value)}
-            style={{ ...filterInputStyle, width: "90px" }}
+            className="h-7 w-24 px-2 text-xs"
           />
-          <span style={{ color: "var(--color-text-faint)", fontSize: "0.7rem" }}>-</span>
-          <input
+          <span className="text-xs text-muted-foreground">–</span>
+          <Input
             type="time"
             value={timeTo}
             onChange={(e) => onTimeToChange(e.target.value)}
-            style={{ ...filterInputStyle, width: "90px" }}
+            className="h-7 w-24 px-2 text-xs"
           />
         </div>
       </div>
 
-      <div style={filterGroupStyle}>
-        <span style={filterLabelStyle}>Size (MB)</span>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <input
+      <div className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground">
+          Size (MB)
+        </span>
+        <div className="flex items-center gap-1">
+          <Input
             type="number"
             min="0"
             step="any"
             placeholder="Min"
             value={minSizeMB}
             onChange={(e) => onMinSizeChange(e.target.value)}
-            style={{ ...filterInputStyle, width: "70px" }}
+            className="h-7 w-20 px-2 text-xs"
           />
-          <span style={{ color: "var(--color-text-faint)", fontSize: "0.7rem" }}>-</span>
-          <input
+          <span className="text-xs text-muted-foreground">–</span>
+          <Input
             type="number"
             min="0"
             step="any"
             placeholder="Max"
             value={maxSizeMB}
             onChange={(e) => onMaxSizeChange(e.target.value)}
-            style={{ ...filterInputStyle, width: "70px" }}
+            className="h-7 w-20 px-2 text-xs"
           />
         </div>
       </div>
 
-      <div style={filterGroupStyle}>
-        <span style={filterLabelStyle}>File Type</span>
-        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+      <div className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground">
+          File Type
+        </span>
+        <div className="flex flex-wrap gap-1">
           {availableTypes.length === 0 ? (
-            <span style={{ color: "var(--color-text-faint)", fontSize: "0.8rem" }}>-</span>
+            <span className="text-xs text-muted-foreground">-</span>
           ) : (
             availableTypes.map((ext) => {
               const active = selectedTypes.has(ext);
               return (
-                <button
+                <Badge
                   key={ext}
+                  variant={active ? "default" : "outline"}
+                  className="cursor-pointer select-none"
                   onClick={() => onTypeToggle(ext)}
-                  style={{
-                    padding: "2px 8px",
-                    borderRadius: "10px",
-                    border: active
-                      ? "1px solid var(--color-primary)"
-                      : "1px solid var(--color-border)",
-                    background: active ? "var(--color-primary)" : "#fff",
-                    color: active ? "#fff" : "#333",
-                    cursor: "pointer",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                  }}
                 >
                   .{ext.toUpperCase()}
-                </button>
+                </Badge>
               );
             })
           )}
@@ -235,29 +194,11 @@ export default function FilterBar({
       </div>
 
       {hasActiveFilters && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            alignSelf: "flex-end",
-            paddingBottom: "0.5rem",
-          }}
-        >
-          <button
-            onClick={onClearFilters}
-            style={{
-              background: "none",
-              border: "1px solid var(--color-text-faint)",
-              borderRadius: "var(--radius-sm)",
-              padding: "0.25rem 0.5rem",
-              cursor: "pointer",
-              fontSize: "0.8rem",
-            }}
-          >
+        <div className="flex items-center gap-2 self-end pb-2">
+          <Button variant="ghost" size="sm" onClick={onClearFilters}>
             Clear Filters
-          </button>
-          <span style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>(filtered)</span>
+          </Button>
+          <span className="text-xs text-muted-foreground">(filtered)</span>
         </div>
       )}
     </div>
