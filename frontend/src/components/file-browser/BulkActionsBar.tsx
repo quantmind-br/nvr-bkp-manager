@@ -1,4 +1,7 @@
-import { actionBtn, formatSize } from "./utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+
+import { formatSize } from "./utils";
 
 interface BulkActionsBarProps {
   selectedCount: number;
@@ -31,89 +34,61 @@ export default function BulkActionsBar({
 }: BulkActionsBarProps) {
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-          marginBottom: "0.75rem",
-          padding: "0.5rem 0.75rem",
-          background: "#e8f0fe",
-          border: "1px solid #b3d4fc",
-          borderRadius: "var(--radius-md)",
-          fontSize: "0.85rem",
-          flexWrap: "wrap",
-        }}
-      >
-        <span style={{ fontWeight: 600 }}>
+      <div className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+        <span className="font-semibold">
           {selectedCount} file{selectedCount !== 1 ? "s" : ""} selected
-          <span style={{ fontWeight: 400, color: "var(--color-text-muted)", marginLeft: "0.25rem" }}>
+          <span className="ml-1 font-normal text-muted-foreground">
             ({formatSize(selectedTotalSize)})
           </span>
         </span>
-        <button
-          onClick={onClearSelection}
-          style={{ ...actionBtn("var(--color-text-muted)"), fontSize: "0.75rem" }}
-        >
+        <Button variant="ghost" size="sm" onClick={onClearSelection}>
           Clear selection
-        </button>
-        <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem" }}>
-          <button
+        </Button>
+        <div className="ml-auto flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onBulkDownload}
             disabled={bulkDownloading}
-            style={{
-              ...actionBtn("var(--color-success)"),
-              opacity: bulkDownloading ? 0.6 : 1,
-              cursor: bulkDownloading ? "wait" : "pointer",
-            }}
+            className="border-green-600 text-green-600 hover:bg-green-50"
           >
             {bulkDownloading ? "Preparing zip..." : "Download Selected"}
-          </button>
+          </Button>
           {isAdmin && !confirmBulkDelete && (
-            <button onClick={onRequestBulkDelete} style={actionBtn("var(--color-danger)")}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRequestBulkDelete}
+              className="border-destructive text-destructive hover:bg-destructive/10"
+            >
               Delete Selected
-            </button>
+            </Button>
           )}
           {isAdmin && confirmBulkDelete && (
-            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <span style={{ color: "var(--color-danger)", fontWeight: 600, fontSize: "0.8rem" }}>
+            <span className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-destructive">
                 Delete {selectedCount} files?
               </span>
-              <button
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={onConfirmBulkDelete}
                 disabled={bulkDeleting}
-                style={{
-                  ...actionBtn("var(--color-danger)"),
-                  opacity: bulkDeleting ? 0.6 : 1,
-                  cursor: bulkDeleting ? "wait" : "pointer",
-                }}
               >
                 {bulkDeleting ? "Deleting..." : "Yes"}
-              </button>
-              <button onClick={onCancelBulkDelete} style={actionBtn("var(--color-text-muted)")}>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onCancelBulkDelete}>
                 No
-              </button>
+              </Button>
             </span>
           )}
         </div>
       </div>
 
       {bulkDeleteResult && (
-        <p
-          role="alert"
-          aria-live="assertive"
-          style={{
-            color: "var(--color-danger)",
-            padding: "0.5rem 0.75rem",
-            background: "#FFF0F0",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid #FCC",
-            marginBottom: "0.75rem",
-            fontSize: "0.85rem",
-          }}
-        >
-          {bulkDeleteResult}
-        </p>
+        <Alert variant="destructive" className="mb-3" role="alert" aria-live="assertive">
+          <AlertDescription>{bulkDeleteResult}</AlertDescription>
+        </Alert>
       )}
     </>
   );
