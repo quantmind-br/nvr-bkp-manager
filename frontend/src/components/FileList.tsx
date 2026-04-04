@@ -212,7 +212,7 @@ export default function FileList() {
   const itemCount = sortedFiles.filter((f) => f.name !== "..").length;
 
   return (
-    <div style={{ marginTop: "1rem" }}>
+    <div className="mt-4">
       <Breadcrumb currentPath={currentPath} onNavigate={navigateTo} itemCount={itemCount} loading={loading} isAdmin={isAdmin} uploadSlot={isAdmin ? <UploadButton currentPath={currentPath} onUploadComplete={refreshFiles} /> : null} />
       <FilterBar
         availableChannels={availableChannels}
@@ -241,9 +241,17 @@ export default function FileList() {
       {selectedForBulk.size > 0 && (
         <BulkActionsBar selectedCount={selectedForBulk.size} selectedTotalSize={selectedTotalSize} isAdmin={isAdmin} bulkDownloading={bulkDownloading} bulkDeleting={bulkDeleting} confirmBulkDelete={confirmBulkDelete} bulkDeleteResult={bulkDeleteResult} onClearSelection={() => setSelectedForBulk(new Set())} onBulkDownload={handleBulkDownload} onRequestBulkDelete={() => setConfirmBulkDelete(true)} onConfirmBulkDelete={handleBulkDelete} onCancelBulkDelete={() => setConfirmBulkDelete(false)} />
       )}
-      {loading && <p aria-live="polite" style={{ color: "var(--color-text-muted)", padding: "2rem", textAlign: "center" }}>Loading files...</p>}
+      {loading && (
+        <p aria-live="polite" className="py-8 text-center text-muted-foreground">
+          Loading files...
+        </p>
+      )}
       {error && (
-        <p role="alert" aria-live="assertive" style={{ color: "var(--color-danger)", padding: "1rem", background: "#FFF0F0", borderRadius: "var(--radius-md)", border: "1px solid #FCC" }}>
+        <p
+          role="alert"
+          aria-live="assertive"
+          className="mb-3 rounded-md border border-destructive/20 bg-destructive/5 p-4 text-destructive"
+        >
           Error: {error}
         </p>
       )}
@@ -252,7 +260,7 @@ export default function FileList() {
         <>
           <FileTable files={sortedFiles} sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} selectedForBulk={selectedForBulk} allSelected={allSelected} someSelected={someSelected} headerCheckboxRef={headerCheckboxRef} onToggleSelectAll={toggleSelectAll} onToggleFileSelect={toggleFileSelect} onPlay={setSelectedFile} onDownload={handleDownload} onDelete={handleDelete} onNavigate={navigateTo} isAdmin={isAdmin} downloadingFile={downloadingFile} deletingFile={deletingFile} confirmingDelete={confirmingDelete} onSetConfirmingDelete={setConfirmingDelete} />
           {itemCount === 0 && (
-            <p style={{ color: "var(--color-text-faint)", textAlign: "center", padding: "3rem 1rem" }}>
+            <p className="py-12 text-center text-muted-foreground">
               No files found.{hasActiveFilters ? " Try adjusting your filters." : ""}
             </p>
           )}
