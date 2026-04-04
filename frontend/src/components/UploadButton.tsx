@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 interface UploadButtonProps {
   currentPath: string;
@@ -97,59 +99,29 @@ export default function UploadButton({ currentPath, onUploadComplete }: UploadBu
   const isError = status?.startsWith("Error:") ?? false;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+    <div className="flex items-center gap-2">
       <input
         ref={inputRef}
         type="file"
         multiple
-        style={{ display: "none" }}
+        className="hidden"
         onChange={(e) => e.target.files && handleFiles(e.target.files)}
       />
-      <button
+      <Button
         onClick={() => inputRef.current?.click()}
-        style={{
-          background: "var(--color-primary)",
-          color: "#fff",
-          border: "none",
-          borderRadius: "var(--radius-md)",
-          padding: "4px 12px",
-          cursor: "pointer",
-          fontSize: "0.8rem",
-          fontWeight: 600,
-        }}
+        size="sm"
+        variant="default"
       >
         Upload
-      </button>
+      </Button>
       {uploadProgress !== null && (
-        <div
-          style={{
-            width: "120px",
-            height: "6px",
-            background: "var(--color-border)",
-            borderRadius: "var(--radius-sm)",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              width: `${uploadProgress}%`,
-              height: "100%",
-              background: "var(--color-primary)",
-              transition: "width 0.2s",
-            }}
-          />
-        </div>
+        <Progress value={uploadProgress} className="h-1.5 w-28" />
       )}
       {status && (
         <span
           aria-live={isError ? "assertive" : "polite"}
           role={isError ? "alert" : undefined}
-          style={{
-            fontSize: "0.8rem",
-            color: isError
-              ? "var(--color-danger)"
-              : "var(--color-text-muted)",
-          }}
+          className={isError ? "text-sm text-destructive" : "text-sm text-muted-foreground"}
         >
           {status}
         </span>
