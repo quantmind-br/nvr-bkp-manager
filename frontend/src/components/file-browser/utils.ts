@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 export function formatSize(bytes: number): string {
   if (bytes === 0) return "-";
   const units = ["B", "KB", "MB", "GB"];
@@ -21,19 +19,6 @@ export function formatDate(iso: string): string {
 export function getExtension(name: string): string {
   const dot = name.lastIndexOf(".");
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
-}
-
-export function actionBtn(color: string): CSSProperties {
-  return {
-    background: "none",
-    border: `1px solid ${color}`,
-    color,
-    borderRadius: "var(--radius-sm)",
-    padding: "2px 8px",
-    cursor: "pointer",
-    fontSize: "0.8rem",
-    whiteSpace: "nowrap",
-  };
 }
 
 export function isPlayable(name: string): boolean {

@@ -10,6 +10,8 @@ function Progress({
   value,
   ...props
 }: React.ComponentProps<typeof ProgressPrimitive.Root>) {
+  const normalizedValue = Math.min(Math.max(value ?? 0, 0), 100)
+
   return (
     <ProgressPrimitive.Root
       data-slot="progress"
@@ -21,9 +23,25 @@ function Progress({
     >
       <ProgressPrimitive.Indicator
         data-slot="progress-indicator"
-        className="h-full w-full flex-1 bg-primary transition-all"
-        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
-      />
+        asChild
+      >
+        <svg
+          aria-hidden="true"
+          className="h-full w-full flex-1"
+          viewBox="0 0 100 1"
+          preserveAspectRatio="none"
+        >
+          <rect
+            className="fill-primary transition-all"
+            x="0"
+            y="0"
+            width={normalizedValue}
+            height="1"
+            rx="0.5"
+            ry="0.5"
+          />
+        </svg>
+      </ProgressPrimitive.Indicator>
     </ProgressPrimitive.Root>
   )
 }
