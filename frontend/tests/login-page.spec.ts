@@ -6,10 +6,10 @@ test.describe("Login Page", () => {
   });
 
   test("shows login form elements", async ({ page }) => {
-    await expect(page.locator("h1, h2").first()).toBeVisible();
-    await expect(page.locator("#login-username, input[type='text']").first()).toBeVisible();
-    await expect(page.locator("#login-password, input[type='password']").first()).toBeVisible();
-    await expect(page.locator("button[type='submit']").first()).toBeVisible();
+    await expect(page.locator("h1, h2, [class*='card-title']").first()).toBeVisible();
+    await expect(page.locator("#login-username")).toBeVisible();
+    await expect(page.locator("#login-password")).toBeVisible();
+    await expect(page.locator("button[type='submit']")).toBeVisible();
   });
 
   test("shows error on wrong credentials", async ({ page }) => {
@@ -17,7 +17,7 @@ test.describe("Login Page", () => {
     await page.fill("#login-password", "wrongpass");
     await page.click("button[type='submit']");
     await expect(
-      page.locator("[role='alert'], .text-destructive, p[style*='color']").first()
+      page.locator("[role='alert'], [data-variant='destructive'], .text-destructive").first()
     ).toBeVisible({ timeout: 5000 });
   });
 });
