@@ -26,3 +26,8 @@
 - Card/CardHeader/CardContent/CardTitle from @/components/ui/card
 - Alert variant="destructive" for error messages
 - Input + Label from shadcn — IDs preserved (#login-username, #login-password)
+
+## [2026-04-04] T6: AdminPanel migration
+- shadcn Tabs replaces manual activeTab state + button tabs
+- Tabs/TabsList/TabsTrigger/TabsContent from @/components/ui/tabs
+- defaultValue="users" sets initial tab
