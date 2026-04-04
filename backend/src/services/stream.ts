@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "child_process";
-import { watch, constants } from "fs";
+import { watch, constants, createWriteStream } from "fs";
 import { access, mkdir, rm } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -82,92 +82,138 @@ export async function createHlsSession(
 
   // Use pipe-based SFTP streaming with -ss for seeking
   const seekArgs = startSeconds > 0 ? ["-ss", String(startSeconds)] : [];
-  const inputArgs = ext === ".dav"
-    ? [...seekArgs, "-f", "hevc", "-i", "pipe:0"]
-    : [...seekArgs, "-i", "pipe:0"];
+  const hlsOutputArgs = [
+    "-c:v", "copy",
+    "-an",
+    "-f", "hls",
+    "-hls_time", "4",
+    "-hls_list_size", "0",
+    "-hls_playlist_type", "event",
+    "-hls_flags", "append_list",
+    "-hls_segment_filename", join(hlsDir, "seg_%04d.ts"),
+    playlistPath,
+  ];
 
   sftpHandle = await getReadStream(fileName);
 
-  ffmpegProcess = spawn(
-    "ffmpeg",
-    [
-      ...inputArgs,
-      "-c:v", "copy",
-      "-an",
-      "-f", "hls",
-      "-hls_time", "4",
-      "-hls_list_size", "0",
-      "-hls_playlist_type", "event",
-      "-hls_flags", "append_list",
-      "-hls_segment_filename", join(hlsDir, "seg_%04d.ts"),
-      playlistPath,
-    ],
-    { stdio: ["pipe", "pipe", "pipe"] },
-  );
-
-  ffmpegProcess.stderr?.on("data", (chunk: Buffer) => {
-    const msg = chunk.toString();
-    if (msg.includes("Error") || msg.includes("error")) {
-      console.error("[FFmpeg error]", msg.trim());
-    }
-  });
-
-  sftpHandle.stream.pipe(ffmpegProcess.stdin!);
-  sftpHandle.stream.on("error", (err) => {
-    console.error("[SFTP stream error]", err.message);
-    cleanup();
-  });
-
-  ffmpegProcess.stdin?.on("error", () => { /* broken pipe */ });
-  ffmpegProcess.on("close", () => { /* finished */ });
-
-  const ready = new Promise<void>((resolve, reject) => {
-    let settled = false;
-    let watcher: ReturnType<typeof watch> | undefined;
-
-    const timeout = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      watcher?.close();
-      reject(new Error("HLS stream timeout — no segments produced"));
-      cleanup();
-    }, 120000);
-
-    // Check if file already exists before attaching watcher (race condition)
-    fileExists(playlistPath).then((exists) => {
-      if (settled) return;
-      if (exists) {
-        settled = true;
-        clearTimeout(timeout);
-        resolve();
-        return;
+  function spawnFfmpeg(inputArgs: string[]): ChildProcess {
+    const proc = spawn(
+      "ffmpeg",
+      [...inputArgs, ...hlsOutputArgs],
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
+    proc.stderr?.on("data", (chunk: Buffer) => {
+      const msg = chunk.toString();
+      if (msg.includes("Error") || msg.includes("error")) {
+        console.error("[FFmpeg error]", msg.trim());
       }
+    });
+    proc.stdin?.on("error", () => { /* broken pipe */ });
+    proc.on("close", () => { /* finished */ });
+    return proc;
+  }
 
-      watcher = watch(hlsDir, (_, filename) => {
+  function waitForPlaylist(proc: ChildProcess): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      let settled = false;
+      let watcher: ReturnType<typeof watch> | undefined;
+
+      const timeout = setTimeout(() => {
         if (settled) return;
-        if (filename === "stream.m3u8") {
+        settled = true;
+        watcher?.close();
+        reject(new Error("HLS stream timeout — no segments produced"));
+        cleanup();
+      }, 120000);
+
+      fileExists(playlistPath).then((exists) => {
+        if (settled) return;
+        if (exists) {
+          settled = true;
+          clearTimeout(timeout);
+          resolve();
+          return;
+        }
+
+        watcher = watch(hlsDir, (_, filename) => {
+          if (settled) return;
+          if (filename === "stream.m3u8") {
+            settled = true;
+            clearTimeout(timeout);
+            watcher?.close();
+            resolve();
+          }
+        });
+      });
+
+      proc.on("close", (code) => {
+        fileExists(playlistPath).then((exists) => {
+          if (settled) return;
           settled = true;
           clearTimeout(timeout);
           watcher?.close();
-          resolve();
-        }
+          if (exists) {
+            resolve();
+          } else {
+            reject(new Error(`FFmpeg exited with code ${code} before producing segments`));
+          }
+        });
       });
     });
+  }
 
-    ffmpegProcess!.on("close", (code) => {
-      fileExists(playlistPath).then((exists) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        watcher?.close();
-        if (exists) {
-          resolve();
-        } else {
-          reject(new Error(`FFmpeg exited with code ${code} before producing segments`));
+  let ready: Promise<void>;
+
+  if (ext === ".dav") {
+    // Raw HEVC: pipe directly from SFTP to FFmpeg (no container, no seeking needed)
+    ffmpegProcess = spawnFfmpeg([...seekArgs, "-f", "hevc", "-i", "pipe:0"]);
+    sftpHandle.stream.pipe(ffmpegProcess.stdin!);
+    sftpHandle.stream.on("error", (err) => {
+      console.error("[SFTP stream error]", err.message);
+      cleanup();
+    });
+    ready = waitForPlaylist(ffmpegProcess);
+  } else {
+    // MP4: buffer to temp file first — MP4 container requires seekable input
+    // (moov atom may be at end of file, which FFmpeg can't read from a pipe)
+    const tempMp4Path = join(hlsDir, "input.mp4");
+    ready = new Promise<void>((resolve, reject) => {
+      let downloadDone = false;
+      const ws = createWriteStream(tempMp4Path);
+      sftpHandle!.stream.pipe(ws);
+
+      sftpHandle!.stream.on("error", (err) => {
+        if (downloadDone) return;
+        downloadDone = true;
+        console.error("[SFTP stream error]", err.message);
+        ws.destroy();
+        cleanup();
+        reject(new Error(`SFTP download failed: ${err.message}`));
+      });
+
+      ws.on("error", (err) => {
+        if (downloadDone) return;
+        downloadDone = true;
+        console.error("[MP4 temp write error]", err.message);
+        cleanup();
+        reject(new Error(`Failed to write temp MP4: ${err.message}`));
+      });
+
+      ws.on("finish", () => {
+        if (downloadDone) return;
+        downloadDone = true;
+        sftpHandle?.sftp.end().catch(() => {});
+        sftpHandle = null;
+        if (cleaned) {
+          reject(new Error("Session cleaned up during download"));
+          return;
         }
+
+        ffmpegProcess = spawnFfmpeg([...seekArgs, "-i", tempMp4Path]);
+        waitForPlaylist(ffmpegProcess).then(resolve, reject);
       });
     });
-  });
+  }
 
   return { sessionId, hlsDir, startSeconds, durationSeconds, createdAt: Date.now(), cleanup, ready };
 }
