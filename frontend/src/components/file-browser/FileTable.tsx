@@ -3,6 +3,7 @@ import type { RefObject } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -17,6 +18,7 @@ import { formatDate, formatSize, getExtension, isPlayable } from "./utils";
 
 interface FileTableProps {
   files: FileEntry[];
+  loading?: boolean;
   sortColumn: SortColumn;
   sortDirection: SortDirection;
   onSort: (col: SortColumn) => void;
@@ -39,6 +41,7 @@ interface FileTableProps {
 
 export default function FileTable({
   files,
+  loading = false,
   sortColumn,
   sortDirection,
   onSort,
@@ -91,7 +94,21 @@ export default function FileTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {files.map((file) => (
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={`skeleton-${i}`}>
+                  <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                </TableRow>
+              ))
+            : files.map((file) => (
             <TableRow
               key={file.name}
               tabIndex={file.isDirectory ? 0 : undefined}
@@ -223,7 +240,7 @@ export default function FileTable({
                 </div>
               </TableCell>
             </TableRow>
-          ))}
+              ))}
         </TableBody>
       </Table>
     </div>

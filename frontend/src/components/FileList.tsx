@@ -241,11 +241,6 @@ export default function FileList() {
       {selectedForBulk.size > 0 && (
         <BulkActionsBar selectedCount={selectedForBulk.size} selectedTotalSize={selectedTotalSize} isAdmin={isAdmin} bulkDownloading={bulkDownloading} bulkDeleting={bulkDeleting} confirmBulkDelete={confirmBulkDelete} bulkDeleteResult={bulkDeleteResult} onClearSelection={() => setSelectedForBulk(new Set())} onBulkDownload={handleBulkDownload} onRequestBulkDelete={() => setConfirmBulkDelete(true)} onConfirmBulkDelete={handleBulkDelete} onCancelBulkDelete={() => setConfirmBulkDelete(false)} />
       )}
-      {loading && (
-        <p aria-live="polite" className="py-8 text-center text-muted-foreground">
-          Loading files...
-        </p>
-      )}
       {error && (
         <p
           role="alert"
@@ -256,10 +251,10 @@ export default function FileList() {
         </p>
       )}
       {selectedFile && <VideoPlayer fileName={selectedFile} currentPath={currentPath} onClose={() => setSelectedFile(null)} />}
-      {!loading && !error && (
+      {!error && (
         <>
-          <FileTable files={sortedFiles} sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} selectedForBulk={selectedForBulk} allSelected={allSelected} someSelected={someSelected} headerCheckboxRef={headerCheckboxRef} onToggleSelectAll={toggleSelectAll} onToggleFileSelect={toggleFileSelect} onPlay={setSelectedFile} onDownload={handleDownload} onDelete={handleDelete} onNavigate={navigateTo} isAdmin={isAdmin} downloadingFile={downloadingFile} deletingFile={deletingFile} confirmingDelete={confirmingDelete} onSetConfirmingDelete={setConfirmingDelete} />
-          {itemCount === 0 && (
+          <FileTable files={sortedFiles} loading={loading} sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} selectedForBulk={selectedForBulk} allSelected={allSelected} someSelected={someSelected} headerCheckboxRef={headerCheckboxRef} onToggleSelectAll={toggleSelectAll} onToggleFileSelect={toggleFileSelect} onPlay={setSelectedFile} onDownload={handleDownload} onDelete={handleDelete} onNavigate={navigateTo} isAdmin={isAdmin} downloadingFile={downloadingFile} deletingFile={deletingFile} confirmingDelete={confirmingDelete} onSetConfirmingDelete={setConfirmingDelete} />
+          {!loading && itemCount === 0 && (
             <p className="py-12 text-center text-muted-foreground">
               No files found.{hasActiveFilters ? " Try adjusting your filters." : ""}
             </p>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "../../api";
 
 interface PublicSettings {
@@ -107,8 +108,18 @@ export default function AdminServerSection() {
   if (loading) {
     return (
       <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-base">Server Settings</CardTitle>
+        </CardHeader>
         <CardContent>
-          <p className="py-4 text-center text-muted-foreground">Loading settings...</p>
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     );
