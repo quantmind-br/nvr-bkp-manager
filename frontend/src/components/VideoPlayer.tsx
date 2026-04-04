@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
 import { apiFetch } from "../api";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface VideoPlayerProps {
   fileName: string;
@@ -150,212 +152,127 @@ export default function VideoPlayer({ fileName, currentPath, onClose }: VideoPla
   }
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.85)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") onClose();
+    <Dialog
+      open={true}
+      onOpenChange={(open) => {
+        if (!open) onClose();
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          width: "90vw",
-          maxWidth: "1200px",
-          marginBottom: "0.5rem",
-        }}
+      <DialogContent
+        className="max-w-[92vw] w-full border-0 bg-black/95 p-4 text-white [&>button]:hidden"
+        onEscapeKeyDown={onClose}
+        onInteractOutside={onClose}
       >
-        <span
-          style={{
-            color: "#fff",
-            fontSize: "0.9rem",
-            fontFamily: "monospace",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {fileName}
-        </span>
-        <button
-          onClick={onClose}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "none";
-          }}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#fff",
-            fontSize: "1.5rem",
-            cursor: "pointer",
-            padding: "0.25rem 0.5rem",
-            lineHeight: 1,
-            borderRadius: "var(--radius-md)",
-          }}
-          aria-label="Close player"
-        >
-          ×
-        </button>
-      </div>
-
-      {status && (
-        <p
-          aria-live="polite"
-          style={{ color: "#aaa", fontSize: "0.9rem", margin: "1rem 0" }}
-        >
-          {status}
-        </p>
-      )}
-
-      {error && (
-        <p
-          role="alert"
-          aria-live="assertive"
-          style={{ color: "#f66", fontSize: "0.9rem", margin: "1rem 0" }}
-        >
-          {error}
-        </p>
-      )}
-
-      <video
-        ref={videoRef}
-        controls
-        style={{
-          maxWidth: "90vw",
-          maxHeight: "75vh",
-          background: "#000",
-          borderRadius: "var(--radius-md)",
-          display: error ? "none" : "block",
-        }}
-      />
-
-      {/* Custom seek bar for full video duration */}
-      {durationSeconds && (
-        <div style={{ width: "90vw", maxWidth: "1200px", marginTop: "0.75rem" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              color: "#aaa",
-              fontSize: "0.75rem",
-              marginBottom: "0.25rem",
-            }}
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="truncate overflow-hidden font-mono text-sm text-gray-300">{fileName}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-white hover:bg-white/10 hover:text-white"
+            onClick={onClose}
+            aria-label="Close player"
           >
-            <span>{formatTime(currentTime)}</span>
-            <span style={{ color: "var(--color-text-muted)" }}>
-              Click to jump to any point in the recording
-            </span>
-            <span>{formatTime(durationSeconds)}</span>
-          </div>
-          <div
-            onClick={handleSeekBarClick}
-            onKeyDown={(e) => {
-              if (!durationSeconds) return;
-              const step = Math.max(1, Math.floor(durationSeconds * 0.05));
-              if (e.key === "ArrowRight") {
-                e.preventDefault();
-                startStream(Math.min(durationSeconds, currentTime + step));
-              }
-              if (e.key === "ArrowLeft") {
-                e.preventDefault();
-                startStream(Math.max(0, currentTime - step));
-              }
-            }}
-            onMouseMove={(e) => {
-              if (!durationSeconds) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-              setHoverTime(Math.floor(ratio * durationSeconds));
-            }}
-            onMouseLeave={() => setHoverTime(null)}
-            tabIndex={0}
-            role="slider"
-            aria-label="Seek position"
-            aria-valuemin={0}
-            aria-valuemax={durationSeconds}
-            aria-valuenow={Math.floor(currentTime)}
-            style={{
-              width: "100%",
-              height: "24px",
-              background: "#333",
-              borderRadius: "var(--radius-md)",
-              cursor: "pointer",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {/* Progress indicator */}
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                height: "100%",
-                width: `${(currentTime / durationSeconds) * 100}%`,
-                background: "var(--color-primary)",
-                borderRadius: "4px 0 0 4px",
-                transition: "width 0.3s",
-              }}
-            />
-            {/* Time markers */}
-            {Array.from(
-              { length: Math.min(Math.floor(durationSeconds / 600), 11) },
-              (_, i) => {
-                const markerTime = (i + 1) * 600;
-                const pct = (markerTime / durationSeconds) * 100;
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      position: "absolute",
-                      left: `${pct}%`,
-                      top: 0,
-                      height: "100%",
-                      width: "1px",
-                      background: "rgba(255,255,255,0.15)",
-                    }}
-                  />
-                );
-              },
-            )}
-            {hoverTime !== null && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "-24px",
-                  left: `${(hoverTime / durationSeconds) * 100}%`,
-                  transform: "translateX(-50%)",
-                  background: "#000",
-                  color: "#fff",
-                  padding: "2px 6px",
-                  borderRadius: "var(--radius-sm)",
-                  fontSize: "0.7rem",
-                  pointerEvents: "none",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {formatTime(hoverTime)}
-              </div>
-            )}
-          </div>
+            ×
+          </Button>
         </div>
-      )}
-    </div>
+
+        {status && (
+          <p aria-live="polite" className="my-4 text-center text-sm text-gray-400">
+            {status}
+          </p>
+        )}
+
+        {error && (
+          <p role="alert" aria-live="assertive" className="my-4 text-center text-sm text-red-400">
+            {error}
+          </p>
+        )}
+
+        <video
+          ref={videoRef}
+          controls
+          className={`mx-auto block max-h-[70vh] max-w-full rounded-md bg-black ${error ? "hidden" : ""}`}
+        />
+
+        {durationSeconds && (
+          (() => {
+            const progressStyle = { width: `${(currentTime / durationSeconds) * 100}%` };
+            const hoverStyle =
+              hoverTime !== null
+                ? { left: `${(hoverTime / durationSeconds) * 100}%` }
+                : undefined;
+
+            return (
+              <div className="mt-3 w-full">
+                <div className="mb-1 flex justify-between text-xs text-gray-400">
+                  <span>{formatTime(currentTime)}</span>
+                  <span className="text-gray-500">Click to jump to any point</span>
+                  <span>{formatTime(durationSeconds)}</span>
+                </div>
+                <div
+                  onClick={handleSeekBarClick}
+                  onKeyDown={(e) => {
+                    if (!durationSeconds) return;
+                    const step = Math.max(1, Math.floor(durationSeconds * 0.05));
+                    if (e.key === "ArrowRight") {
+                      e.preventDefault();
+                      startStream(Math.min(durationSeconds, currentTime + step));
+                    }
+                    if (e.key === "ArrowLeft") {
+                      e.preventDefault();
+                      startStream(Math.max(0, currentTime - step));
+                    }
+                  }}
+                  onMouseMove={(e) => {
+                    if (!durationSeconds) return;
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    setHoverTime(Math.floor(ratio * durationSeconds));
+                  }}
+                  onMouseLeave={() => setHoverTime(null)}
+                  tabIndex={0}
+                  role="slider"
+                  aria-label="Seek position"
+                  aria-valuemin={0}
+                  aria-valuemax={durationSeconds}
+                  aria-valuenow={Math.floor(currentTime)}
+                  className="relative h-6 w-full cursor-pointer overflow-hidden rounded-md bg-gray-700"
+                >
+                  <div
+                    className="absolute left-0 top-0 h-full rounded-l-md bg-primary transition-[width] duration-300"
+                    style={progressStyle}
+                  />
+                  {Array.from(
+                    { length: Math.min(Math.floor(durationSeconds / 600), 11) },
+                    (_, i) => {
+                      const markerTime = (i + 1) * 600;
+                      const pct = (markerTime / durationSeconds) * 100;
+                      const markerStyle = { left: `${pct}%` };
+
+                      return (
+                        <div
+                          key={i}
+                          className="absolute top-0 h-full w-px bg-white/15"
+                          style={markerStyle}
+                        />
+                      );
+                    },
+                  )}
+                  {hoverTime !== null && hoverStyle && (
+                    <div
+                      className="pointer-events-none absolute -top-6 -translate-x-1/2 whitespace-nowrap rounded bg-black px-1.5 py-0.5 text-xs text-white"
+                      style={hoverStyle}
+                    >
+                      {formatTime(hoverTime)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
