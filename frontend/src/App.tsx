@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "./auth";
@@ -71,6 +72,7 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Toaster position="bottom-right" richColors />
     </div>
   );
 }

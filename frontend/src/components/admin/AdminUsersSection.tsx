@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 import { useAuth } from "../../auth";
 import { apiFetch } from "../../api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -156,7 +157,7 @@ export default function AdminUsersSection() {
       setFormData({ username: "", password: "", role: "viewer" });
 
       if (data.forceRelogin) {
-        alert("Your credentials were updated. Please log in again.");
+        toast.info("Your credentials were updated. Please log in again.");
         logout();
         return;
       }
