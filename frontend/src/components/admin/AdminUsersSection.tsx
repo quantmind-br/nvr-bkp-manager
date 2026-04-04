@@ -1,6 +1,27 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../../auth";
 import { apiFetch } from "../../api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface SafeUser {
   id: number;
@@ -14,54 +35,6 @@ interface UserFormData {
   username: string;
   password: string;
   role: "admin" | "viewer";
-}
-
-const cardStyle: React.CSSProperties = {
-  background: "#fff",
-  padding: "1.5rem",
-  borderRadius: "8px",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-  marginBottom: "1.5rem",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "0.8rem",
-  fontWeight: 600,
-  marginBottom: "0.25rem",
-  color: "var(--color-text)",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "0.5rem",
-  fontSize: "0.9rem",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-md)",
-  boxSizing: "border-box",
-};
-
-const primaryBtnStyle: React.CSSProperties = {
-  background: "var(--color-primary)",
-  color: "#fff",
-  border: "none",
-  borderRadius: "var(--radius-md)",
-  padding: "0.6rem",
-  fontSize: "0.9rem",
-  cursor: "pointer",
-};
-
-function actionBtn(color: string): React.CSSProperties {
-  return {
-    background: "none",
-    border: `1px solid ${color}`,
-    color,
-    borderRadius: "var(--radius-sm)",
-    padding: "2px 8px",
-    cursor: "pointer",
-    fontSize: "0.8rem",
-    whiteSpace: "nowrap",
-  };
 }
 
 function formatDate(iso: string): string {
@@ -223,242 +196,209 @@ export default function AdminUsersSection() {
   }
 
   return (
-    <div style={cardStyle}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h3 style={{ margin: 0, fontSize: "1rem" }}>Users</h3>
+    <Card className="mb-6">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-base">Users</CardTitle>
         {!showCreateForm && (
-          <button onClick={openCreateForm} style={primaryBtnStyle}>
+          <Button onClick={openCreateForm} size="sm">
             Create User
-          </button>
+          </Button>
         )}
-      </div>
+      </CardHeader>
+      <CardContent>
 
-      {error && (
-        <p style={{ color: "var(--color-danger)", fontSize: "0.85rem", margin: "0 0 1rem" }}>
-          {error}
-        </p>
-      )}
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-      {showCreateForm && (
-        <div
-          style={{
-            padding: "1rem",
-            marginBottom: "1rem",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-md)",
-            background: "var(--color-bg-subtle)",
-          }}
-        >
-          <h4 style={{ margin: "0 0 0.75rem", fontSize: "0.9rem" }}>New User</h4>
-          <form onSubmit={handleCreate}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
-              <div>
-                <label style={labelStyle}>Username</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  style={inputStyle}
-                />
+        {showCreateForm && (
+          <div className="mb-4 rounded-md border border-border bg-muted/30 p-4">
+            <h4 className="mb-3 text-sm font-semibold">New User</h4>
+            <form onSubmit={handleCreate}>
+              <div className="mb-3 grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-username">Username</Label>
+                  <Input
+                    id="create-username"
+                    type="text"
+                    required
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="create-password">Password</Label>
+                  <Input
+                    id="create-password"
+                    type="password"
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Role</Label>
+                  <Select
+                    value={formData.role}
+                    onValueChange={(value) => setFormData({ ...formData, role: value as "admin" | "viewer" })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="viewer">viewer</SelectItem>
+                      <SelectItem value="admin">admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div>
-                <label style={labelStyle}>Password</label>
-                <input
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  style={inputStyle}
-                />
+              {formError && (
+                <Alert variant="destructive" className="mb-2">
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              )}
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={submitting}>
+                  {submitting ? "Creating..." : "Create User"}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={cancelForm}>
+                  Cancel
+                </Button>
               </div>
-              <div>
-                <label style={labelStyle}>Role</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as "admin" | "viewer" })}
-                  style={inputStyle}
-                >
-                  <option value="viewer">viewer</option>
-                  <option value="admin">admin</option>
-                </select>
-              </div>
-            </div>
-            {formError && (
-              <p style={{ color: "var(--color-danger)", fontSize: "0.85rem", margin: "0 0 0.5rem" }}>
-                {formError}
-              </p>
-            )}
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                type="submit"
-                disabled={submitting}
-                style={{ ...primaryBtnStyle, padding: "0.4rem 1rem", opacity: submitting ? 0.7 : 1 }}
-              >
-                {submitting ? "Creating..." : "Create User"}
-              </button>
-              <button
-                type="button"
-                onClick={cancelForm}
-                style={{ ...actionBtn("var(--color-text-muted)"), padding: "0.4rem 1rem" }}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        )}
 
-      {loading && (
-        <p style={{ color: "var(--color-text-muted)", textAlign: "center", padding: "1rem" }}>
-          Loading users...
-        </p>
-      )}
+        {loading && (
+          <p className="p-4 text-center text-sm text-muted-foreground">Loading users...</p>
+        )}
 
-      {!loading && users.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid var(--color-border)", textAlign: "left" }}>
-                <th style={{ padding: "0.5rem" }}>Username</th>
-                <th style={{ padding: "0.5rem" }}>Role</th>
-                <th style={{ padding: "0.5rem" }}>Created</th>
-                <th style={{ padding: "0.5rem" }}>Updated</th>
-                <th style={{ padding: "0.5rem", width: "180px" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        {!loading && users.length > 0 && (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead className="w-44">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
               {users.map((u) => (
-                <tr key={u.id} style={{ borderBottom: "1px solid #eee" }}>
+                <TableRow key={u.id}>
                   {editingUserId === u.id ? (
-                    <td colSpan={5} style={{ padding: "0.5rem" }}>
+                    <TableCell colSpan={5}>
                       <form onSubmit={(e) => handleEdit(e, u.id)}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
-                          <div>
-                            <label style={labelStyle}>Username</label>
-                            <input
+                        <div className="mb-3 grid grid-cols-3 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`edit-username-${u.id}`}>Username</Label>
+                            <Input
+                              id={`edit-username-${u.id}`}
                               type="text"
                               required
                               value={formData.username}
                               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                              style={inputStyle}
                             />
                           </div>
-                          <div>
-                            <label style={labelStyle}>Password</label>
-                            <input
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`edit-password-${u.id}`}>Password</Label>
+                            <Input
+                              id={`edit-password-${u.id}`}
                               type="password"
                               value={formData.password}
                               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                               placeholder="Leave blank to keep current"
-                              style={inputStyle}
                             />
-                            <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                            <span className="text-xs text-muted-foreground">
                               Leave blank to keep current password
                             </span>
                           </div>
-                          <div>
-                            <label style={labelStyle}>Role</label>
-                            <select
+                          <div className="space-y-1.5">
+                            <Label>Role</Label>
+                            <Select
                               value={formData.role}
-                              onChange={(e) => setFormData({ ...formData, role: e.target.value as "admin" | "viewer" })}
-                              style={inputStyle}
+                              onValueChange={(value) => setFormData({ ...formData, role: value as "admin" | "viewer" })}
                             >
-                              <option value="viewer">viewer</option>
-                              <option value="admin">admin</option>
-                            </select>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="viewer">viewer</SelectItem>
+                                <SelectItem value="admin">admin</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                         {formError && (
-                          <p style={{ color: "var(--color-danger)", fontSize: "0.85rem", margin: "0 0 0.5rem" }}>
-                            {formError}
-                          </p>
+                          <Alert variant="destructive" className="mb-2">
+                            <AlertDescription>{formError}</AlertDescription>
+                          </Alert>
                         )}
-                        <div style={{ display: "flex", gap: "0.5rem" }}>
-                          <button
-                            type="submit"
-                            disabled={submitting}
-                            style={{ ...primaryBtnStyle, padding: "0.4rem 1rem", opacity: submitting ? 0.7 : 1 }}
-                          >
+                        <div className="flex gap-2">
+                          <Button type="submit" size="sm" disabled={submitting}>
                             {submitting ? "Saving..." : "Save Changes"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelForm}
-                            style={{ ...actionBtn("var(--color-text-muted)"), padding: "0.4rem 1rem" }}
-                          >
+                          </Button>
+                          <Button type="button" variant="ghost" size="sm" onClick={cancelForm}>
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       </form>
-                    </td>
+                    </TableCell>
                   ) : (
                     <>
-                      <td style={{ padding: "0.5rem", fontWeight: 500 }}>{u.username}</td>
-                      <td style={{ padding: "0.5rem" }}>
-                        <span
-                          style={{
-                            padding: "2px 8px",
-                            borderRadius: "10px",
-                            fontSize: "0.8rem",
-                            fontWeight: 600,
-                            background: u.role === "admin" ? "var(--color-primary)" : "var(--color-bg-subtle)",
-                            color: u.role === "admin" ? "#fff" : "var(--color-text)",
-                            border: u.role === "admin" ? "none" : "1px solid var(--color-border)",
-                          }}
-                        >
-                          {u.role}
-                        </span>
-                      </td>
-                      <td style={{ padding: "0.5rem", color: "var(--color-text-muted)", fontSize: "0.85rem" }}>
-                        {formatDate(u.created_at)}
-                      </td>
-                      <td style={{ padding: "0.5rem", color: "var(--color-text-muted)", fontSize: "0.85rem" }}>
-                        {formatDate(u.updated_at)}
-                      </td>
-                      <td style={{ padding: "0.5rem", display: "flex", gap: "4px" }}>
+                      <TableCell className="font-medium">{u.username}</TableCell>
+                      <TableCell>
+                        <Badge variant={u.role === "admin" ? "default" : "secondary"}>{u.role}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{formatDate(u.created_at)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{formatDate(u.updated_at)}</TableCell>
+                      <TableCell>
                         {deletingUserId === u.id ? (
-                          <span style={{ display: "flex", gap: "4px", alignItems: "center", fontSize: "0.8rem" }}>
-                            <span style={{ color: "var(--color-danger)", fontWeight: 600 }}>Are you sure?</span>
-                            <button
+                          <span className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-destructive">Are you sure?</span>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="h-7 text-xs"
                               onClick={() => handleDelete(u.id)}
                               disabled={submitting}
-                              style={{
-                                ...actionBtn("var(--color-danger)"),
-                                opacity: submitting ? 0.6 : 1,
-                              }}
                             >
                               {submitting ? "Deleting..." : "Confirm Delete"}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
                               onClick={() => setDeletingUserId(null)}
-                              style={actionBtn("var(--color-text-muted)")}
                             >
                               Cancel
-                            </button>
+                            </Button>
                           </span>
                         ) : (
-                          <>
-                            <button
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
                               onClick={() => openEditForm(u)}
                               disabled={isLastAdmin(u)}
-                              style={{
-                                ...actionBtn("var(--color-primary)"),
-                                opacity: isLastAdmin(u) ? 0.4 : 1,
-                                cursor: isLastAdmin(u) ? "not-allowed" : "pointer",
-                              }}
                               title={isLastAdmin(u) ? "Cannot edit the last admin user" : "Edit user"}
                             >
                               Edit
-                            </button>
-                            <button
-                              onClick={() => { setDeletingUserId(u.id); setFormError(null); }}
-                              disabled={currentUser?.id === u.id || isLastAdmin(u)}
-                              style={{
-                                ...actionBtn("var(--color-danger)"),
-                                opacity: currentUser?.id === u.id || isLastAdmin(u) ? 0.4 : 1,
-                                cursor: currentUser?.id === u.id || isLastAdmin(u) ? "not-allowed" : "pointer",
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 border-destructive text-xs text-destructive"
+                              onClick={() => {
+                                setDeletingUserId(u.id);
+                                setFormError(null);
                               }}
+                              disabled={currentUser?.id === u.id || isLastAdmin(u)}
                               title={
                                 currentUser?.id === u.id
                                   ? "Cannot delete your own account"
@@ -468,24 +408,23 @@ export default function AdminUsersSection() {
                               }
                             >
                               Delete
-                            </button>
-                          </>
+                            </Button>
+                          </div>
                         )}
-                      </td>
+                      </TableCell>
                     </>
                   )}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
-      {!loading && users.length === 0 && !error && (
-        <p style={{ color: "var(--color-text-muted)", textAlign: "center", padding: "1rem" }}>
-          No users found.
-        </p>
-      )}
-    </div>
+        {!loading && users.length === 0 && !error && (
+          <p className="p-4 text-center text-sm text-muted-foreground">No users found.</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
