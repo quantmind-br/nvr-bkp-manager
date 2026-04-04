@@ -82,9 +82,7 @@ export async function createHlsSession(
 
   // Use pipe-based SFTP streaming with -ss for seeking
   const seekArgs = startSeconds > 0 ? ["-ss", String(startSeconds)] : [];
-  const hlsOutputArgs = [
-    "-c:v", "copy",
-    "-an",
+  const hlsMuxerArgs = [
     "-f", "hls",
     "-hls_time", "4",
     "-hls_list_size", "0",
@@ -96,10 +94,10 @@ export async function createHlsSession(
 
   sftpHandle = await getReadStream(fileName);
 
-  function spawnFfmpeg(inputArgs: string[]): ChildProcess {
+  function spawnFfmpeg(args: string[]): ChildProcess {
     const proc = spawn(
       "ffmpeg",
-      [...inputArgs, ...hlsOutputArgs],
+      [...args, ...hlsMuxerArgs],
       { stdio: ["pipe", "pipe", "pipe"] },
     );
     proc.stderr?.on("data", (chunk: Buffer) => {
@@ -166,7 +164,7 @@ export async function createHlsSession(
 
   if (ext === ".dav") {
     // Raw HEVC: pipe directly from SFTP to FFmpeg (no container, no seeking needed)
-    ffmpegProcess = spawnFfmpeg([...seekArgs, "-f", "hevc", "-i", "pipe:0"]);
+    ffmpegProcess = spawnFfmpeg([...seekArgs, "-f", "hevc", "-i", "pipe:0", "-c:v", "copy", "-an"]);
     sftpHandle.stream.pipe(ffmpegProcess.stdin!);
     sftpHandle.stream.on("error", (err) => {
       console.error("[SFTP stream error]", err.message);
@@ -209,7 +207,7 @@ export async function createHlsSession(
           return;
         }
 
-        ffmpegProcess = spawnFfmpeg([...seekArgs, "-i", tempMp4Path]);
+        ffmpegProcess = spawnFfmpeg([...seekArgs, "-i", tempMp4Path, "-c:v", "libx264",  "-preset", "ultrafast", "-crf", "23", "-an"]);
         waitForPlaylist(ffmpegProcess).then(resolve, reject);
       });
     });
