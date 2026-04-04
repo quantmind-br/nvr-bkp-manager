@@ -1,4 +1,13 @@
+import React from "react";
 import type { ReactNode } from "react";
+import {
+  Breadcrumb as ShadcnBreadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 interface BreadcrumbProps {
   currentPath: string;
@@ -18,49 +27,42 @@ export default function Breadcrumb({
   uploadSlot,
 }: BreadcrumbProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.5rem",
-        marginBottom: "0.75rem",
-        padding: "0.5rem 0.75rem",
-        background: "var(--color-bg-subtle)",
-        borderRadius: "var(--radius-md)",
-        fontFamily: "monospace",
-        fontSize: "0.9rem",
-      }}
-    >
-      <span style={{ fontWeight: 600 }}>Path:</span>
-      <span>
-        <span
-          onClick={() => onNavigate("/")}
-          style={{ cursor: "pointer", color: "var(--color-primary)" }}
-        >
-          /
-        </span>
-        {currentPath.split("/").filter(Boolean).map((seg, i, arr) => {
-          const path = `/${arr.slice(0, i + 1).join("/")}`;
-          const isLast = i === arr.length - 1;
-          return (
-            <span key={path}>
-              {isLast ? (
-                <span style={{ fontWeight: 600 }}>{seg}</span>
-              ) : (
-                <span
-                  onClick={() => onNavigate(path)}
-                  style={{ cursor: "pointer", color: "var(--color-primary)" }}
-                >
-                  {seg}
-                </span>
-              )}
-              {" / "}
-            </span>
-          );
-        })}
-      </span>
-      <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "1rem" }}>
-        <span style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>
+    <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-muted/50 rounded-md font-mono text-sm">
+      <ShadcnBreadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              onClick={() => onNavigate("/")}
+              className="cursor-pointer"
+            >
+              /
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          {currentPath.split("/").filter(Boolean).map((seg, i, arr) => {
+            const path = "/" + arr.slice(0, i + 1).join("/");
+            const isLast = i === arr.length - 1;
+            return (
+              <React.Fragment key={path}>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  {isLast ? (
+                    <BreadcrumbPage className="font-semibold">{seg}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink
+                      onClick={() => onNavigate(path)}
+                      className="cursor-pointer"
+                    >
+                      {seg}
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </React.Fragment>
+            );
+          })}
+        </BreadcrumbList>
+      </ShadcnBreadcrumb>
+      <span className="ml-auto flex items-center gap-4">
+        <span className="text-muted-foreground text-xs font-sans">
           {!loading && `${itemCount} items`}
         </span>
         {isAdmin && uploadSlot}
