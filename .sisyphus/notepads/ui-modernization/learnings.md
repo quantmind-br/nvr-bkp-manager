@@ -16,3 +16,13 @@
 ## [2026-04-04] T2: vitest setup
 - Vitest ran cleanly with jsdom + globals + setupFiles, and a simple mocked `useAuth()` render test was enough to verify the login form.
 - `npm install` updated the lockfile with the testing deps; no config issues showed up in diagnostics.
+
+## [2026-04-04] T4: App.tsx migration
+- NavLink className={({ isActive }) => cn(...)} — React Router v7 API
+- Button from @/components/ui/button replaces logout button
+- Removed navLinkBaseStyle object
+
+## [2026-04-04] T5: LoginPage migration
+- Card/CardHeader/CardContent/CardTitle from @/components/ui/card
+- Alert variant="destructive" for error messages
+- Input + Label from shadcn — IDs preserved (#login-username, #login-password)
