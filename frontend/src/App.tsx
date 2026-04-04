@@ -34,7 +34,7 @@ export default function App() {
             to="/"
             className={({ isActive }) =>
               cn(
-                "text-sm pb-1 border-b-2 transition-colors no-underline",
+                "text-sm pb-1 border-b-2 transition-colors duration-150 no-underline",
                 isActive
                   ? "text-foreground font-semibold border-primary"
                   : "text-muted-foreground border-transparent hover:text-foreground"
@@ -48,7 +48,7 @@ export default function App() {
               to="/admin"
               className={({ isActive }) =>
                 cn(
-                  "text-sm pb-1 border-b-2 transition-colors no-underline",
+                  "text-sm pb-1 border-b-2 transition-colors duration-150 no-underline",
                   isActive
                     ? "text-foreground font-semibold border-primary"
                     : "text-muted-foreground border-transparent hover:text-foreground"
@@ -61,7 +61,7 @@ export default function App() {
         </nav>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">{user.username} ({user.role})</span>
-          <Button variant="outline" size="sm" onClick={logout}>Logout</Button>
+          <Button variant="outline" size="sm" onClick={logout} className="transition-colors duration-150">Logout</Button>
         </div>
       </header>
       <Routes>

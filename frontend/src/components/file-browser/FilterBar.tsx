@@ -67,7 +67,7 @@ export default function FilterBar({
                 <Badge
                   key={ch}
                   variant={active ? "default" : "outline"}
-                  className="cursor-pointer select-none"
+                  className="cursor-pointer select-none transition-all duration-200"
                   onClick={() => onChannelToggle(ch)}
                 >
                   {ch.toUpperCase()}
@@ -182,7 +182,7 @@ export default function FilterBar({
                 <Badge
                   key={ext}
                   variant={active ? "default" : "outline"}
-                  className="cursor-pointer select-none"
+                  className="cursor-pointer select-none transition-all duration-200"
                   onClick={() => onTypeToggle(ext)}
                 >
                   .{ext.toUpperCase()}

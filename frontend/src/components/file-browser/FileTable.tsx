@@ -113,7 +113,7 @@ export default function FileTable({
               key={file.name}
               tabIndex={file.isDirectory ? 0 : undefined}
               data-dir-row={file.isDirectory ? "true" : undefined}
-              className={file.isDirectory ? "cursor-pointer transition-colors hover:bg-muted/50" : ""}
+              className={file.isDirectory ? "cursor-pointer transition-colors duration-100 hover:bg-muted/50" : ""}
               onClick={() => file.isDirectory && onNavigate(file.name)}
               onKeyDown={(e) => {
                 if (e.key === "Escape") onSetConfirmingDelete(null);
@@ -170,7 +170,7 @@ export default function FileTable({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 border-primary text-xs text-primary"
+                    className="h-7 border-primary text-xs text-primary transition-all duration-150"
                     onClick={(e) => {
                       e.stopPropagation();
                       onPlay(file.name);
@@ -183,7 +183,7 @@ export default function FileTable({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 border-green-600 text-xs text-green-600"
+                    className="h-7 border-green-600 text-xs text-green-600 transition-all duration-150"
                     onClick={(e) => {
                       e.stopPropagation();
                       onDownload(file.name);
@@ -202,7 +202,7 @@ export default function FileTable({
                       <Button
                         variant="destructive"
                         size="sm"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs transition-all duration-150"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDelete(file.name);
@@ -214,7 +214,7 @@ export default function FileTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs transition-all duration-150"
                         onClick={(e) => {
                           e.stopPropagation();
                           onSetConfirmingDelete(null);
@@ -227,7 +227,7 @@ export default function FileTable({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 border-destructive text-xs text-destructive"
+                       className="h-7 border-destructive text-xs text-destructive transition-all duration-150"
                       onClick={(e) => {
                         e.stopPropagation();
                         onSetConfirmingDelete(file.name);

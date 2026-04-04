@@ -34,7 +34,7 @@ export default function BulkActionsBar({
 }: BulkActionsBarProps) {
   return (
     <>
-      <div className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+      <div className="animate-in slide-in-from-top-1 fade-in mb-3 flex flex-wrap items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm duration-200">
         <span className="font-semibold">
           {selectedCount} file{selectedCount !== 1 ? "s" : ""} selected
           <span className="ml-1 font-normal text-muted-foreground">
